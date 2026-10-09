@@ -74,9 +74,15 @@ The native automation tool cannot attach to an accessory-only app or its popover
 ## Remaining limits
 
 - Direct mouse interaction with the actual menu bar popover was not verified through automation because the native tool could not attach to that surface. The shared panel, keyboard Settings command, expansion, cancellation, and confirmed termination were inspected through the native window mode.
-- Launch-at-login registration and a real logout/login cycle were not exercised. A development bundle outside Applications can report unavailable registration; Settings tells the user to move it to Applications and reopen it.
+- Launch-at-login registration and a real logout/login cycle were not exercised. macOS reported no background-service record even for an installed app. The 0.1.1 patch therefore permits explicit registration instead of disabling the control or assuming the app is outside Applications. Registration errors remain visible, and the preference stays off until the user enables it.
 - Sleep/wake reset is implemented and reviewed but was not tested by suspending the user's machine.
-- Developer ID signing and notarization have been verified through Xcode. Scheduled update timing still requires longer-running observation. Development builds deliberately disable unconfigured updates. Release update-installation results are recorded below when completed.
+- Developer ID signing and notarization have been verified through Xcode. Scheduled update timing still requires longer-running observation. Development builds deliberately disable unconfigured updates.
 - Process visibility is limited by macOS permissions and races with process exit. Unknown readings are not zero measurements. Host CPU and group sums can differ because of unreadable work and sampling windows.
 - Detached or reparented workloads can lose attribution. Generic `node` or `python` command wrappers are attributed through known ancestry; arbitrary command arguments are not inspected or matched.
 - Group termination targets the captured members. It can partially succeed if a member exits during the operation. PID, start identity, and real/effective user IDs are checked immediately before each signal, but POSIX `kill` does not provide an atomic identity-bound process handle.
+
+## Signed update installation
+
+A Developer ID signed and notarized build 1 was installed in Applications with a feed pointing to the public validation prerelease. Sparkle downloaded build 3 from GitHub, verified its EdDSA signature, replaced the app, and relaunched it. The installed `CFBundleVersion` became 3, strict code-signature validation passed, and its executable SHA-256 matched the notarized release artifact exactly. Sparkle's system log records signature acceptance and archive extraction at 12:54:25 Central on October 9, 2026.
+
+The stable 0.1.1 build 4 adds only the launch-at-login registration control correction and canonical packaging version defaults. Its installed build 3→4 update check follows publication of the stable production feed.

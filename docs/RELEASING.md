@@ -1,6 +1,6 @@
 # Releasing Mac Stats
 
-The first release is 0.1.0, build 3. Local development packaging defaults to build 1; set an increasing `BUILD_NUMBER` for releases. The bundle identifier is `com.parkerrex.mac-stats`. Developer ID signing, Xcode archive upload, notarized export, stapling, and Gatekeeper acceptance have been validated using Xcode's existing Apple account. See [validation](VALIDATION.md) for update-installation evidence and remaining limits.
+Version 0.1.0, build 3 is the notarized public prerelease. The next stable patch is 0.1.1, build 4, which is now the canonical version in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.parkerrex.mac-stats`. Developer ID signing, Xcode archive upload, notarized export, stapling, Gatekeeper acceptance, and Sparkle installation from baseline build 1 to build 3 have been validated. Build 4 signing, notarization, publication, and the installed build 3 to build 4 update check remain pending. See [validation](VALIDATION.md) for evidence and remaining limits.
 
 ## Local development package
 
@@ -11,7 +11,7 @@ scripts/package_app.sh
 open "dist/Mac Stats.app"
 ```
 
-Packaging uses the checked-in version defaults, lockfile, icon, and plist. It embeds the pinned Sparkle binary with `ditto` to preserve framework symlinks and permissions. It signs inner helpers before the framework and the app, then verifies all signatures. The result is `dist/Mac Stats.app` and `dist/Mac-Stats-0.1.0.zip`. Existing files with those names in the output directory are replaced. This is a repeatable build procedure; byte-for-byte reproducibility is not promised because toolchains and signing timestamps can differ.
+Packaging uses the checked-in version defaults, lockfile, icon, and plist. It embeds the pinned Sparkle binary with `ditto` to preserve framework symlinks and permissions. It signs inner helpers before the framework and the app, then verifies all signatures. With the current defaults, the result is `dist/Mac Stats.app` and `dist/Mac-Stats-0.1.1.zip`. Existing files with those names in the output directory are replaced. This is a repeatable build procedure; byte-for-byte reproducibility is not promised because toolchains and signing timestamps can differ.
 
 Ad hoc signing is the default and does not enable hardened runtime. This allows the embedded framework to load locally without Library Validation rejecting its signature. To use an existing development certificate instead:
 
@@ -25,8 +25,8 @@ The packaging script accepts these environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VERSION` | `0.1.0` | Numeric marketing version, three components |
-| `BUILD_NUMBER` | `1` | Positive integer, increased for each distributed build |
+| `VERSION` | `CFBundleShortVersionString` from `Resources/Info.plist`, currently `0.1.1` | Numeric marketing version, three components |
+| `BUILD_NUMBER` | `CFBundleVersion` from `Resources/Info.plist`, currently `4` | Positive integer, increased for each distributed build |
 | `UNIVERSAL` | `0` | `1` builds arm64 and x86_64; otherwise builds for the current machine |
 | `OUTPUT_DIRECTORY` | `dist` in the repository | Output directory |
 | `SIGNING_IDENTITY` | `-` | Ad hoc, Apple Development, or Developer ID identity |
@@ -47,7 +47,7 @@ Increase `BUILD_NUMBER` for every update. Keep the bundle identifier and signing
 
 ```sh
 swift test
-VERSION=0.1.0 BUILD_NUMBER=1 UNIVERSAL=1 DISTRIBUTION=1 \
+VERSION=0.1.1 BUILD_NUMBER=4 UNIVERSAL=1 DISTRIBUTION=1 \
 SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
 NOTARY_PROFILE='MacStatsNotary' \
 UPDATE_FEED_URL='https://your-update-host.example/mac-stats/appcast.xml' \
@@ -107,7 +107,7 @@ Copy the notarized archive into a dedicated release archive directory, preservin
 ```sh
 .build/artifacts/sparkle/Sparkle/bin/generate_appcast \
   --account com.parkerrex.mac-stats \
-  --download-url-prefix 'https://github.com/ParkerRex/mac-stats/releases/download/v0.1.0/' \
+  --download-url-prefix 'https://github.com/ParkerRex/mac-stats/releases/download/v0.1.1/' \
   --maximum-deltas 0 \
   /path/to/release-archives
 ```

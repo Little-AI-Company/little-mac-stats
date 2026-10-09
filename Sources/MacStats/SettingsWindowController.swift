@@ -105,11 +105,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func refreshLoginState() {
         let status = SMAppService.mainApp.status
         loginButton.state = status == .enabled || status == .requiresApproval ? .on : .off
-        loginButton.isEnabled = status != .notFound
+        loginButton.isEnabled = true
         switch status {
         case .enabled: loginStatus.stringValue = "Mac Stats will start when you log in."
         case .requiresApproval: loginStatus.stringValue = "Launch at login needs approval in System Settings → General → Login Items."
-        case .notFound: loginStatus.stringValue = "Move Mac Stats to Applications, then reopen it to enable launch at login."
+        case .notFound: loginStatus.stringValue = "Launch at login is not registered. Enable it to set it up."
         case .notRegistered: loginStatus.stringValue = "Mac Stats will start only when you open it."
         @unknown default: loginStatus.stringValue = "Launch at login status is unavailable."
         }
