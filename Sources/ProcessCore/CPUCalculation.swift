@@ -20,4 +20,16 @@ enum CPUCalculation {
         let idle = deltas[2]
         return Double(total - idle) / Double(total) * 100
     }
+
+    static func corePercentages(previous: [[UInt32]]?, current: [[UInt32]]) -> [Double]? {
+        guard let previous, !current.isEmpty, previous.count == current.count else { return nil }
+        var percentages: [Double] = []
+        percentages.reserveCapacity(current.count)
+        for (before, after) in zip(previous, current) {
+            // No elapsed ticks are an unknown reading, rather than proof that this core was idle.
+            guard before.count == 4, after.count == 4, before != after else { return nil }
+            percentages.append(systemPercent(previous: before, current: after))
+        }
+        return percentages
+    }
 }

@@ -81,6 +81,31 @@ enum NativeProcessReader {
         return [info.cpu_ticks.0, info.cpu_ticks.1, info.cpu_ticks.2, info.cpu_ticks.3]
     }
 
+    static func coreTicks() -> [[UInt32]]? {
+        let host = mach_host_self()
+        defer { mach_port_deallocate(mach_task_self_, host) }
+        var processorCount: natural_t = 0
+        var informationCount: mach_msg_type_number_t = 0
+        var information: processor_info_array_t?
+        let result = host_processor_info(host, PROCESSOR_CPU_LOAD_INFO, &processorCount,
+                                         &information, &informationCount)
+        // host_processor_info returns an out-of-line VM allocation, not a malloc buffer.
+        defer {
+            if let information {
+                vm_deallocate(mach_task_self_, vm_address_t(UInt(bitPattern: information)),
+                              vm_size_t(informationCount) * vm_size_t(MemoryLayout<integer_t>.stride))
+            }
+        }
+        let statesPerCore = Int(CPU_STATE_MAX)
+        guard result == KERN_SUCCESS, let information, processorCount > 0,
+              Int(informationCount) == Int(processorCount) * statesPerCore else { return nil }
+        // The kernel returns processor_array order, with user/system/idle/nice ticks for each core.
+        return (0..<Int(processorCount)).map { processor in
+            let offset = processor * statesPerCore
+            return (0..<statesPerCore).map { UInt32(bitPattern: information[offset + $0]) }
+        }
+    }
+
     static func ancestorIDs(of pid: Int32) -> Set<Int32> {
         var result: Set<Int32> = []
         var current = pid

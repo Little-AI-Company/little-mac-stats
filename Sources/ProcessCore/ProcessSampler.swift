@@ -3,6 +3,7 @@ import Foundation
 
 public actor ProcessSampler {
     private var previousTicks: [UInt32]?
+    private var previousCoreTicks: [[UInt32]]?
     private var previousProcesses: [ProcessIdentity: UInt64] = [:]
     private var previousProcessTime: UInt64?
     private let processorCount = max(1, ProcessInfo.processInfo.activeProcessorCount)
@@ -18,6 +19,7 @@ public actor ProcessSampler {
 
     public func reset() {
         previousTicks = nil
+        previousCoreTicks = nil
         previousProcesses = [:]
         previousProcessTime = nil
     }
@@ -26,6 +28,10 @@ public actor ProcessSampler {
         let ticks = try NativeProcessReader.hostTicks()
         let total = previousTicks.map { CPUCalculation.systemPercent(previous: $0, current: ticks) } ?? 0
         previousTicks = ticks
+        let coreTicks = NativeProcessReader.coreTicks()
+        let corePercentages = coreTicks.flatMap { CPUCalculation.corePercentages(previous: previousCoreTicks, current: $0) }
+        previousCoreTicks = coreTicks
+        let logicalProcessorCount = coreTicks?.count ?? processorCount
         var groups: [ProcessGroup] = []
         var unavailableProcessCount = 0
         if includeProcesses {
@@ -59,7 +65,7 @@ public actor ProcessSampler {
                 if let counter = record.cpuTicks {
                     if let previous = previousProcesses[record.identity] {
                         percent = CPUCalculation.processPercent(previous: previous, current: counter,
-                            elapsedNanoseconds: elapsed, processorCount: processorCount,
+                            elapsedNanoseconds: elapsed, processorCount: logicalProcessorCount,
                             nanosecondsPerTick: nanosecondsPerTick)
                     }
                     counters[record.identity] = counter
@@ -79,7 +85,8 @@ public actor ProcessSampler {
             previousProcesses = [:]
             previousProcessTime = nil
         }
-        return SamplingSnapshot(timestamp: Date(), systemCPUPercent: total, logicalProcessorCount: processorCount,
+        return SamplingSnapshot(timestamp: Date(), systemCPUPercent: total, coreCPUPercentages: corePercentages,
+                                logicalProcessorCount: logicalProcessorCount,
                                 includesProcesses: includeProcesses, groups: groups,
                                 unavailableProcessCount: unavailableProcessCount)
     }

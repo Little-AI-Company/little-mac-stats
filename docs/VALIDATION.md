@@ -2,7 +2,7 @@
 
 ## Observable outcomes
 
-1. Launching the packaged app shows a fixed-width native CPU percentage in the menu bar and no Dock icon. The panel accepts keyboard input and shows measured CPU after a sampling interval.
+1. Launching the packaged app shows compact per-core blocks by default, or the saved percentage style, and no Dock icon. The panel accepts keyboard input and shows measured CPU after a sampling interval.
 2. Codex and Claude are identifiable on the live host, and app helpers or descendant workloads are counted once. CPU percentages use all logical processors as 100 percent.
 3. Expanding a group reveals its processes. A termination action requires confirmation and rechecks identity before sending a signal. A disposable fixture can be stopped; the user's active processes are never used as termination tests.
 4. Settings and Escape/Command-comma/Command-Q behave as native macOS controls. Launch-at-login status and unavailable release-update configuration are reported truthfully.
@@ -41,7 +41,7 @@ The table above records the initial implementation before the native interface p
 
 ### Native interface and performance pass
 
-The menu bar now uses system text and updates only when its rounded CPU value or sampling state changes. History is recorded while closed without loading or repainting the panel. Native metadata remains fresh on every process scan; classification caches exist only within one snapshot. The panel updates visible rows only, caches search matches with identity/name/path invalidation, skips unchanged presentation writes, and retains small raster app icons.
+In 0.1.1, the menu bar switched to system text that updates only when its rounded CPU value or sampling state changes. Version 0.2.0 adds the default core blocks, redrawn only when a shade level changes. History is recorded while closed without loading or repainting the panel. Native metadata remains fresh on every process scan; classification caches exist only within one snapshot. The panel updates visible rows only, caches search matches with identity/name/path invalidation, skips unchanged presentation writes, and retains small raster app icons.
 
 | Check | Before | After |
 | --- | --- | --- |
@@ -82,6 +82,16 @@ The native automation tool cannot attach to an accessory-only app or its popover
 - Process visibility is limited by macOS permissions and races with process exit. Unknown readings are not zero measurements. Host CPU and group sums can differ because of unreadable work and sampling windows.
 - Detached or reparented workloads can lose attribution. Generic `node` or `python` command wrappers are attributed through known ancestry; arbitrary command arguments are not inspected or matched.
 - Group termination targets the captured members. It can partially succeed if a member exits during the operation. PID, start identity, and real/effective user IDs are checked immediately before each signal, but POSIX `kill` does not provide an atomic identity-bound process handle.
+
+## Per-core display verification
+
+Version 0.2.0 adds real per-core kernel measurements, a default block display, a saved percentage alternative, leading style previews, and a separate Settings/updates/About/Quit footer.
+
+- All 12 focused tests pass, including per-core normalization, counter wraparound, baseline/reset, core-count changes, and a live closed-panel read.
+- The release probe returned ten per-core readings on this ten-core Mac, with no process enumeration in closed mode. The first reading was unavailable until a baseline existed. Four samples over 6.072 seconds consumed 0.001770 CPU seconds, approximately 0.0029% of whole-machine CPU. Steady sampling took 0.131–0.381 ms, and resident memory was 6.53 MiB.
+- A separate 2,000-sample debug stress check showed no accumulating kernel buffer allocation: resident memory was 6.95 MiB compared with 6.64 MiB in a short normal run. The returned VM buffer and host send right are explicitly released.
+- Native interaction verified selection of Percentage, persistence across quitting and relaunching, and restoration of CPU Cores. Both radios reflected the saved selection. The footer Quit command and native About panel worked; About reported 0.2.0/build 6. Settings and process search remained accessible.
+- Live startup caught an early constraint activation error in the new selector; row-width constraints were moved until after the views share a parent. The corrected packaged app opened successfully, and the overview, details, and settings screenshots were captured from it.
 
 ## Signed update installation
 

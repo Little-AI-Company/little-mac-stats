@@ -1,6 +1,6 @@
 # Releasing Mac Stats
 
-Version 0.1.0, build 3 is the notarized public prerelease. The stable release is 0.1.1, build 4, which is the canonical version in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.parkerrex.mac-stats`. Developer ID signing, Xcode archive upload, notarized export, stapling, Gatekeeper acceptance, and Sparkle installation from baseline build 1 to build 3 have been validated. The production build 3 to build 4 update also passed, including download, installation, relaunch, executable-hash comparison, and signature/ticket checks. See [validation](VALIDATION.md) for evidence and remaining limits.
+The current version is 0.2.0, build 6, as recorded in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.parkerrex.mac-stats`. Developer ID signing, Xcode archive upload, notarized export, stapling, and Gatekeeper acceptance have been validated. Earlier installed updates from build 1 to 3 and build 3 to 4 passed, including download, installation, relaunch, executable-hash comparison, and signature/ticket checks. See [validation](VALIDATION.md) for the current release evidence and remaining limits.
 
 ## Local development package
 
@@ -11,7 +11,7 @@ scripts/package_app.sh
 open "dist/Mac Stats.app"
 ```
 
-Packaging uses the checked-in version defaults, lockfile, icon, and plist. It embeds the pinned Sparkle binary with `ditto` to preserve framework symlinks and permissions. It signs inner helpers before the framework and the app, then verifies all signatures. With the current defaults, the result is `dist/Mac Stats.app` and `dist/Mac-Stats-0.1.1.zip`. Existing files with those names in the output directory are replaced. This is a repeatable build procedure; byte-for-byte reproducibility is not promised because toolchains and signing timestamps can differ.
+Packaging uses the checked-in version defaults, lockfile, icon, and plist. It embeds the pinned Sparkle binary with `ditto` to preserve framework symlinks and permissions. It signs inner helpers before the framework and the app, then verifies all signatures. With the current defaults, the result is `dist/Mac Stats.app` and `dist/Mac-Stats-0.2.0.zip`. Existing files with those names in the output directory are replaced. This is a repeatable build procedure; byte-for-byte reproducibility is not promised because toolchains and signing timestamps can differ.
 
 Ad hoc signing is the default and does not enable hardened runtime. This allows the embedded framework to load locally without Library Validation rejecting its signature. To use an existing development certificate instead:
 
@@ -25,8 +25,8 @@ The packaging script accepts these environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VERSION` | `CFBundleShortVersionString` from `Resources/Info.plist`, currently `0.1.1` | Numeric marketing version, three components |
-| `BUILD_NUMBER` | `CFBundleVersion` from `Resources/Info.plist`, currently `4` | Positive integer, increased for each distributed build |
+| `VERSION` | `CFBundleShortVersionString` from `Resources/Info.plist`, currently `0.2.0` | Numeric marketing version, three components |
+| `BUILD_NUMBER` | `CFBundleVersion` from `Resources/Info.plist`, currently `6` | Positive integer, increased for each distributed build |
 | `UNIVERSAL` | `0` | `1` builds arm64 and x86_64; otherwise builds for the current machine |
 | `OUTPUT_DIRECTORY` | `dist` in the repository | Output directory |
 | `SIGNING_IDENTITY` | `-` | Ad hoc, Apple Development, or Developer ID identity |

@@ -60,6 +60,8 @@ public struct ProcessGroup: Identifiable, Sendable {
 public struct SamplingSnapshot: Sendable {
     public let timestamp: Date
     public let systemCPUPercent: Double
+    /// Per-core capacity in Mach processor order. Nil until a valid interval is available.
+    public let coreCPUPercentages: [Double]?
     public let logicalProcessorCount: Int
     public let includesProcesses: Bool
     public let groups: [ProcessGroup]

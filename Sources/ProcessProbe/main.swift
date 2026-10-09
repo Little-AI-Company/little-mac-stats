@@ -8,7 +8,7 @@ struct ProcessProbe {
         do {
             let arguments = Array(CommandLine.arguments.dropFirst())
             if arguments.contains("--help") {
-                print("ProcessProbe [--samples 5] [--interval 1] [--limit 20] [--system-only] [--verify-termination] [--verify-cpu]")
+                print("ProcessProbe [--samples 5] [--interval 1] [--limit 20] [--system-only] [--cores] [--verify-termination] [--verify-cpu]")
                 return
             }
             if arguments.contains("--verify-termination") {
@@ -24,6 +24,7 @@ struct ProcessProbe {
             let interval = try intervalOption(arguments)
             let sampler = ProcessSampler()
             let systemOnly = arguments.contains("--system-only")
+            let includeCores = arguments.contains("--cores")
             let start = DispatchTime.now().uptimeNanoseconds
             let startCPU = ownCPUSeconds()
             for index in 0..<count {
@@ -35,6 +36,14 @@ struct ProcessProbe {
                 print(String(format: "sample=%d system_cpu=%.3f%% processors=%d processes=%d unavailable=%d sample_ms=%.3f%@",
                     index + 1, snapshot.systemCPUPercent, snapshot.logicalProcessorCount, processCount,
                     snapshot.unavailableProcessCount, duration, index == 0 ? " baseline" : ""))
+                if includeCores {
+                    if let percentages = snapshot.coreCPUPercentages {
+                        let values = percentages.map { String(format: "%.3f", $0) }.joined(separator: ",")
+                        print("  core_cpu_percent=[\(values)] count=\(percentages.count)")
+                    } else {
+                        print("  core_cpu_percent=unavailable")
+                    }
+                }
                 for group in snapshot.groups.prefix(limit) {
                     print(String(format: "  %.3f%% %@ members=%d resident_mb=%.1f", group.cpuPercent, group.name,
                         group.processes.count, Double(group.residentMemoryBytes) / 1_048_576))

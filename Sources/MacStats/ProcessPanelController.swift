@@ -55,10 +55,18 @@ private final class ProcessOutlineView: NSOutlineView {
 @MainActor
 final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSSearchFieldDelegate {
     var onSettings: (() -> Void)?
+    var onAbout: (() -> Void)?
     var onClose: (() -> Void)?
+    var onDisplayStyleChange: ((StatusDisplayStyle) -> Void)?
+    var displayStyle: StatusDisplayStyle = .coreBlocks {
+        didSet {
+            if isViewLoaded { synchronizeDisplayChoices() }
+        }
+    }
     private let terminator: ProcessTerminator
     private let updates: UpdateController
-    private let updateItem = NSMenuItem(title: "Check for Updates…", action: nil, keyEquivalent: "")
+    private let updateButton = NSButton(title: "Check for Updates…", target: nil, action: nil)
+    private var displayChoiceButtons: [StatusDisplayStyle: NSButton] = [:]
     private let totalLabel = NSTextField(labelWithString: "Measuring…")
     private let sampleLabel = NSTextField(labelWithString: "Collecting a process sample…")
     private let historyView = CPUHistoryView()
@@ -82,7 +90,7 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         self.terminator = terminator
         self.updates = updates
         super.init(nibName: nil, bundle: nil)
-        preferredContentSize = NSSize(width: 468, height: 540)
+        preferredContentSize = NSSize(width: 468, height: 620)
     }
     required init?(coder: NSCoder) { nil }
 
@@ -140,15 +148,25 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         stopButton.target = self
         stopButton.action = #selector(stopSelected(_:))
         stopButton.toolTip = "Choose whether to quit or force quit the selected app or process."
-        let optionsButton = NSPopUpButton(frame: .zero, pullsDown: true)
-        optionsButton.bezelStyle = .texturedRounded
-        optionsButton.menu = optionsMenu()
-        optionsButton.setAccessibilityLabel("Mac Stats options")
+        let displayRows = StatusDisplayStyle.allCases.map(displayChoiceRow)
+        let displayChoices = NSStackView(views: displayRows)
+        displayChoices.orientation = .vertical
+        displayChoices.alignment = .leading
+        displayChoices.spacing = 0
+        let displaySeparator = NSBox()
+        displaySeparator.boxType = .separator
+        let footerSeparator = NSBox()
+        footerSeparator.boxType = .separator
+        let footer = applicationFooter()
         let separator = NSBox()
         separator.boxType = .separator
-        for component in [title, totalLabel, historyView, searchField, scrollView, separator, sampleLabel, stopButton, optionsButton] {
+        for component in [title, totalLabel, historyView, searchField, scrollView, separator, sampleLabel,
+                          stopButton, displaySeparator, displayChoices, footerSeparator, footer] {
             component.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(component)
+        }
+        for row in displayRows {
+            row.widthAnchor.constraint(equalTo: displayChoices.widthAnchor).isActive = true
         }
         NSLayoutConstraint.activate([
             title.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
@@ -174,33 +192,90 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
             sampleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             stopButton.topAnchor.constraint(equalTo: sampleLabel.bottomAnchor, constant: 9),
             stopButton.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            stopButton.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
-            optionsButton.centerYAnchor.constraint(equalTo: stopButton.centerYAnchor),
-            optionsButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            stopButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 28),
+            displaySeparator.topAnchor.constraint(equalTo: stopButton.bottomAnchor, constant: 8),
+            displaySeparator.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            displaySeparator.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            displayChoices.topAnchor.constraint(equalTo: displaySeparator.bottomAnchor, constant: 8),
+            displayChoices.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            displayChoices.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            footerSeparator.topAnchor.constraint(equalTo: displayChoices.bottomAnchor, constant: 8),
+            footerSeparator.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            footerSeparator.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            footer.topAnchor.constraint(equalTo: footerSeparator.bottomAnchor, constant: 8),
+            footer.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            footer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            footer.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
             scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 270),
             view.widthAnchor.constraint(greaterThanOrEqualToConstant: 468)
         ])
         updateSystemDisplay()
+        synchronizeDisplayChoices()
         updateActions()
         refreshUpdates()
         observeUpdates()
     }
 
-    private func optionsMenu() -> NSMenu {
-        let menu = NSMenu()
-        menu.autoenablesItems = false
-        menu.addItem(withTitle: "Options", action: nil, keyEquivalent: "")
-        let settings = NSMenuItem(title: "Settings…", action: #selector(showSettings(_:)), keyEquivalent: ",")
-        settings.target = self
-        menu.addItem(settings)
-        updateItem.target = self
-        updateItem.action = #selector(checkUpdates(_:))
-        menu.addItem(updateItem)
-        menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit Mac Stats", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        quit.target = NSApp
-        menu.addItem(quit)
-        return menu
+    private func displayChoiceRow(_ style: StatusDisplayStyle) -> NSStackView {
+        let preview = NSImageView()
+        preview.image = style.previewImage(coreCount: ProcessInfo.processInfo.activeProcessorCount)
+        preview.imageScaling = .scaleProportionallyDown
+        preview.contentTintColor = .labelColor
+        preview.setAccessibilityElement(false)
+        preview.toolTip = "Illustration of the \(style.title) menu bar display."
+        preview.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        preview.heightAnchor.constraint(equalToConstant: 18).isActive = true
+        let button = NSButton(radioButtonWithTitle: style.title, target: self, action: #selector(chooseDisplayStyle(_:)))
+        button.font = .systemFont(ofSize: 13)
+        button.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        button.setAccessibilityLabel("\(style.title) menu bar display")
+        button.toolTip = "Use \(style.title) in the menu bar."
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 28).isActive = true
+        displayChoiceButtons[style] = button
+        let row = NSStackView(views: [preview, button])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 10
+        row.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        return row
+    }
+
+    private func synchronizeDisplayChoices() {
+        for (style, button) in displayChoiceButtons {
+            button.state = style == displayStyle ? .on : .off
+        }
+    }
+
+    @objc private func chooseDisplayStyle(_ sender: NSButton) {
+        guard let style = displayChoiceButtons.first(where: { $0.value === sender })?.key else { return }
+        displayStyle = style
+        onDisplayStyleChange?(style)
+    }
+
+    private func applicationFooter() -> NSStackView {
+        let settings = NSButton(title: "Settings…", target: self, action: #selector(showSettings(_:)))
+        settings.keyEquivalent = ","
+        settings.keyEquivalentModifierMask = .command
+        updateButton.target = self
+        updateButton.action = #selector(checkUpdates(_:))
+        updateButton.cell?.lineBreakMode = .byTruncatingMiddle
+        updateButton.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        updateButton.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let about = NSButton(title: "About", target: self, action: #selector(showAbout(_:)))
+        let quit = NSButton(title: "Quit", target: NSApp, action: #selector(NSApplication.terminate(_:)))
+        quit.setAccessibilityLabel("Quit Mac Stats")
+        quit.keyEquivalent = "q"
+        quit.keyEquivalentModifierMask = .command
+        for button in [settings, updateButton, about, quit] {
+            button.controlSize = .small
+            button.font = .systemFont(ofSize: 11)
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 28).isActive = true
+        }
+        let footer = NSStackView(views: [settings, updateButton, about, quit])
+        footer.orientation = .horizontal
+        footer.alignment = .centerY
+        footer.spacing = 6
+        return footer
     }
 
     func focusTable() { view.window?.makeFirstResponder(outline) }
@@ -557,12 +632,13 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
     }
 
     @objc private func showSettings(_ sender: Any?) { onSettings?() }
+    @objc private func showAbout(_ sender: Any?) { onAbout?() }
     @objc private func checkUpdates(_ sender: Any?) { updates.checkForUpdates() }
 
     private func refreshUpdates() {
-        updateItem.title = updates.availableVersion.map { "Update \($0)…" } ?? "Check for Updates…"
-        updateItem.isEnabled = updates.canCheckForUpdates
-        updateItem.toolTip = updates.statusText
+        updateButton.title = updates.availableVersion.map { "Update \($0)…" } ?? "Check for Updates…"
+        updateButton.isEnabled = updates.isConfigured && updates.canCheckForUpdates
+        updateButton.toolTip = updates.statusText
     }
 
     private func observeUpdates() {
@@ -570,6 +646,7 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
             _ = updates.availableVersion
             _ = updates.canCheckForUpdates
             _ = updates.statusText
+            _ = updates.isConfigured
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 self?.refreshUpdates()

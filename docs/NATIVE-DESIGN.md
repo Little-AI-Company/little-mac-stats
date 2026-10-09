@@ -6,6 +6,7 @@ Reviewed against Apple's current Human Interface Guidelines on October 9, 2026. 
 
 - Keep the current CPU percentage easy to read. A line chart adds the recent trend; it does not replace the number.
 - Use the capacity of the entire Mac as the common 0–100 percent scale for both history and app/process bars. Start bars at zero. Do not rescale individual rows or exaggerate changes by changing the history scale.
+- The optional per-core block display is a separate scale: each block measures one logical CPU against that core's own full capacity. Its four monochrome shade bands must come from real per-core counters. Keep a saved percentage alternative and illustrated style choices above the native application footer.
 - Identify the history interval and CPU units. Keep grid lines sparse and align the plot with surrounding content.
 - Draw only measured data. Distinguish collecting data, unavailable readings, and a measured zero. Do not draw a connection across a known interruption in sampling.
 - Keep numbers beside bars so people can compare both magnitude and exact values without interaction or color interpretation.

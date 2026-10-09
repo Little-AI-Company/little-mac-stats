@@ -6,8 +6,8 @@ Answer two questions immediately: How busy is my Mac, and which app or AI tool i
 
 ## First release
 
-- A compact native CPU percentage in the menu bar, with a fixed width. The custom meter was removed following user feedback. No icon, color coding, or continuous animation.
-- A native, compact popover with total CPU, a measured 60-second history, and app/tool groups. Comparable usage bars retain exact numbers. Search and disclosure reveal individual processes; interaction holds row order stable while values update.
+- A compact monochrome block for each logical CPU is the default menu bar display. Outline, light shade, medium shade, and solid fill show four usage bands. Percentage remains a selectable fixed-width alternative. No chip outline, color coding, or continuous animation.
+- A native, compact popover with total CPU, a measured 60-second history, and app/tool groups. Comparable usage bars retain exact numbers. Search and disclosure reveal individual processes; interaction holds row order stable while values update. Two display choices have leading previews above a separate Settings, updates, About, and Quit footer.
 - CPU uses the capacity of the entire Mac as 100 percent, including on multicore machines.
 - Recognize Codex and Claude, their app helpers, CLI processes, and descendant work. Retain visibility of ordinary apps and unclassified processes. Attribution is based on available process ancestry and executable identity, not AI inference.
 - Expand a group to inspect individual processes. Explicit, confirmed Quit and Force Quit actions identify the selected process or group. Recheck the PID, start time, and ownership immediately before signalling. Reject known stale identities, other users, protected system processes, and this utility. POSIX signalling still has a narrow check-to-signal race, documented in validation.
@@ -19,7 +19,7 @@ Answer two questions immediately: How busy is my Mac, and which app or AI tool i
 
 Use Swift Package Manager, Swift 6, macOS 14 or later, AppKit for status item/popover/window behavior, and Darwin/libproc for process information. Sparkle is the only third-party runtime dependency. No subprocess spawning on each sampling tick.
 
-Keep process sampling off the main thread. Sample system CPU every two seconds while closed, and processes only while the popover is open. Open-panel sampling runs once per second. Stop on sleep and reset baselines after wake. Render only on new samples, with no display-linked animation.
+Keep process sampling off the main thread. Sample system and per-core CPU every two seconds while closed, and processes only while the popover is open. Free the kernel's per-core statistics allocation after every read. Open-panel sampling runs once per second. Stop on sleep and reset baselines after wake. Render only on new samples, with no display-linked animation; redraw the core icon only when its shade levels change.
 
 Three modules: `ProcessCore` for sampling, classification, and safe termination; `MacStats` for the native app; `ProcessProbe` for headless integration evidence. Prefer value snapshots across concurrency boundaries.
 

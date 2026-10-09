@@ -19,6 +19,41 @@ import Testing
     #expect(CPUCalculation.systemPercent(previous: [UInt32.max - 1, 0, 10, 0], current: [3, 0, 15, 0]) == 50)
 }
 
+@Test func coreCPUUsesEachCoresOwnCapacityInProcessorOrder() {
+    let previous: [[UInt32]] = [[10, 20, 30, 0], [10, 0, 40, 0], [10, 20, 30, 0]]
+    let current: [[UInt32]] = [[20, 30, 30, 0], [10, 0, 60, 0], [20, 30, 60, 0]]
+    #expect(CPUCalculation.corePercentages(previous: previous, current: current) == [100, 0, 40])
+    #expect(CPUCalculation.corePercentages(previous: [[UInt32.max - 1, 0, 10, 0]],
+                                         current: [[3, 0, 15, 0]]) == [50])
+}
+
+@Test func coreCPURequiresAValidBaselineAndUnchangedProcessorCount() {
+    let ticks: [[UInt32]] = [[10, 20, 30, 0], [40, 50, 60, 0]]
+    #expect(CPUCalculation.corePercentages(previous: nil, current: ticks) == nil)
+    #expect(CPUCalculation.corePercentages(previous: ticks, current: [ticks[0]]) == nil)
+    #expect(CPUCalculation.corePercentages(previous: [], current: []) == nil)
+    #expect(CPUCalculation.corePercentages(previous: ticks, current: ticks) == nil)
+    #expect(CPUCalculation.corePercentages(previous: [[1, 2, 3]], current: [[2, 3, 4]]) == nil)
+}
+
+@Test func liveClosedSamplingReportsEveryCoreAndResetClearsTheBaseline() async throws {
+    let sampler = ProcessSampler()
+    let first = try await sampler.sample(includeProcesses: false)
+    #expect(first.coreCPUPercentages == nil)
+    try await Task.sleep(for: .milliseconds(100))
+    let next = try await sampler.sample(includeProcesses: false)
+    let cores = try #require(next.coreCPUPercentages)
+    #expect(cores.count == next.logicalProcessorCount)
+    #expect(cores.count == ProcessInfo.processInfo.activeProcessorCount)
+    #expect(cores.allSatisfy { $0.isFinite && (0...100).contains($0) })
+    #expect(!next.includesProcesses)
+    #expect(next.groups.isEmpty)
+    #expect(next.unavailableProcessCount == 0)
+    await sampler.reset()
+    let reset = try await sampler.sample(includeProcesses: false)
+    #expect(reset.coreCPUPercentages == nil)
+}
+
 @Test func descendantsBelongToOneResponsibleTool() {
     let codex = fixture(pid: 101, parent: 1, path: "/opt/bin/codex", cpu: 1)
     let shell = fixture(pid: 102, parent: 101, path: "/bin/zsh", cpu: 2)
