@@ -12,7 +12,17 @@ Mac Stats is a small native macOS menu bar utility for seeing total CPU usage an
 
 The menu bar shows a small block for each logical CPU. Blocks move from outline through light and medium shading to solid as that core gets busier. A percentage display is also available. Click to see a minute of CPU history and usage by app. Search for Codex, Claude, another app, or a process. Each row pairs a usage bar with its exact percentage. Expand a group to inspect its processes. Stop opens a native confirmation with Quit and Force Quit; the app rechecks the process identity before sending a signal. Display choices include previews, with Settings, updates, About, and Quit in a separate footer. There are no web views, telemetry, accounts, or continuous animations.
 
-Signed, notarized downloads are distributed through [GitHub Releases](https://github.com/ParkerRex/mac-stats/releases). Unzip the app, move it to Applications, and open it. The release archive supports Apple silicon and Intel; runtime validation was performed on Apple silicon with macOS 27.0.1. See [validation](docs/VALIDATION.md) for measured performance and remaining limits.
+## Install
+
+Requires macOS 14 or later. Install through the [Homebrew tap](https://github.com/ParkerRex/homebrew-tap):
+
+```sh
+brew install --cask parkerrex/tap/mac-stats
+```
+
+Open **Mac Stats** from Applications. If the same release is already installed manually, use `brew install --cask --adopt parkerrex/tap/mac-stats` to let Homebrew manage the identical app. Use **Check for Updates** in the app, or run `brew update` followed by `brew upgrade --cask --greedy parkerrex/tap/mac-stats`.
+
+Signed, notarized downloads are also available through [GitHub Releases](https://github.com/ParkerRex/mac-stats/releases). Unzip the app, move it to Applications, and open it. Both installation methods use the same release archive, which supports Apple silicon and Intel; runtime validation was performed on Apple silicon with macOS 27.0.1. See [validation](docs/VALIDATION.md) for measured performance and remaining limits.
 
 ## Screenshots
 

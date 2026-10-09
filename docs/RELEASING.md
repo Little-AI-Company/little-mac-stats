@@ -120,6 +120,19 @@ Before announcing a release, install a genuine older Developer ID signed, notari
 
 Attach the notarized archive and generated appcast to a clearly marked GitHub prerelease while verifying the update path. This provides a real HTTPS download endpoint without announcing the build as stable. After successful installation/update checks, promote the release and mark it latest so the production feed URL resolves. Test available macOS versions and architectures and record the exact tested combinations in `docs/VALIDATION.md`; do not imply runtime coverage from cross-compilation alone. The first release was run on Apple silicon; Intel and earlier macOS runtime checks remain follow-up work.
 
+## Homebrew distribution
+
+The canonical cask is [`Casks/mac-stats.rb` in ParkerRex/homebrew-tap](https://github.com/ParkerRex/homebrew-tap/blob/main/Casks/mac-stats.rb). Users install it with `brew install --cask parkerrex/tap/mac-stats`. It downloads the same signed, notarized release archive as the direct GitHub download; no separate build or Homebrew account is needed.
+
+After publishing each stable release:
+
+1. Download the public versioned archive and compute its SHA-256 with `shasum -a 256`. Verify it against the release checksum and inspect the extracted app with `codesign --verify --deep --strict`, `xcrun stapler validate`, and `spctl --assess --type execute`.
+2. Update `version` and `sha256` in the tap's cask. Preserve the versioned download URL, minimum macOS version, and `auto_updates true` while Sparkle updates are supported. Never use `sha256 :no_check` or disable quarantine.
+3. Run `brew style --cask parkerrex/tap/mac-stats`, `brew audit --cask --online parkerrex/tap/mac-stats`, and `brew livecheck --cask parkerrex/tap/mac-stats`. Test installation or upgrade against the actual public archive and record the result in [validation](VALIDATION.md).
+4. Review, commit, and push the tap change. Confirm the public cask has the intended version and checksum. `brew livecheck` reports available releases; it does not publish cask updates.
+
+The app's own updater remains available. For a Homebrew-managed upgrade, use `brew update` followed by `brew upgrade --cask --greedy parkerrex/tap/mac-stats`. The `--greedy` option includes casks with built-in updaters. Homebrew's installed version record does not track updates made through Sparkle.
+
 ## References
 
 - [Sparkle setup, embedding, signing, and appcast generation](https://sparkle-project.org/documentation/)
