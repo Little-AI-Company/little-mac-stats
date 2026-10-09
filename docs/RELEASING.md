@@ -1,6 +1,6 @@
 # Releasing Mac Stats
 
-The initial version is 0.1.0, build 1. The bundle identifier is `com.parkerrex.mac-stats`. Source publication does not imply a trusted public binary release. Production signing, notarization, and a real signed update installation have not been validated in this initial development environment.
+The first release is 0.1.0, build 3. Local development packaging defaults to build 1; set an increasing `BUILD_NUMBER` for releases. The bundle identifier is `com.parkerrex.mac-stats`. Developer ID signing, Xcode archive upload, notarized export, stapling, and Gatekeeper acceptance have been validated using Xcode's existing Apple account. See [validation](VALIDATION.md) for update-installation evidence and remaining limits.
 
 ## Local development package
 
@@ -39,9 +39,9 @@ The update feed and public key must be supplied together. They are embedded in t
 
 ## Production prerequisites
 
-Before publishing a binary, obtain a Developer ID Application certificate and an Apple notarization account. Save notarization credentials with `xcrun notarytool store-credentials`; follow its prompts or Apple's current guidance. Credentials stay in the Keychain. Never commit certificates, private keys, API keys, app-specific passwords, or exported signing files.
+Before publishing a binary, obtain a Developer ID Application signing identity, including its private key, and access to Apple notarization. Use the existing Xcode account workflow below, or save separate CLI credentials with `xcrun notarytool store-credentials`. Credentials stay in the Keychain. Never commit certificates, private keys, API keys, app-specific passwords, or exported signing files.
 
-Use Sparkle's `generate_keys` tool once to create the update-signing private key in the login Keychain and print the public key. The resolved package includes tools under `.build/artifacts/sparkle/Sparkle/bin/`. Back up the key securely outside the repository. Embed only its public key. Choose a permanent HTTPS URL for the appcast and a public HTTPS location for update archives before the first distributed build.
+Mac Stats uses Sparkle's Keychain account `com.parkerrex.mac-stats` for its update-signing key. The resolved package includes tools under `.build/artifacts/sparkle/Sparkle/bin/`. Read the existing public key with `generate_keys --account com.parkerrex.mac-stats -p`; do not generate a replacement for an established release. The production feed is `https://github.com/ParkerRex/mac-stats/releases/latest/download/appcast.xml`. Update archives are GitHub Release assets. The Apple certificate and Sparkle key are separate identities: a second release Mac needs both existing private keys. Keep backups outside the repository; import the existing keys instead of rotating them accidentally.
 
 Increase `BUILD_NUMBER` for every update. Keep the bundle identifier and signing team stable. The settings below are examples with placeholders; they do not identify a configured release service:
 
@@ -57,13 +57,58 @@ scripts/package_app.sh
 
 The script enables hardened runtime, signs and verifies the app, submits a temporary archive with `notarytool --wait`, staples and validates the accepted ticket, and assesses the app with Gatekeeper. The final archive is created after stapling. A failed prerequisite, signature, notarization, or assessment stops packaging. Keep release binaries, build logs, toolchain versions, and debug symbols outside the source repository for diagnosis.
 
+## Use the existing Xcode account for notarization
+
+If Xcode is already signed in to the release team, its distribution workflow can use that account instead of a `notarytool` Keychain profile. First package the app with an available certificate using `SIGNING_IDENTITY`. Then wrap the actual packaged app:
+
+```sh
+scripts/create_xcode_archive.sh \
+  'dist/signed-development/Mac Stats.app' \
+  'dist/Mac Stats.xcarchive'
+open 'dist/Mac Stats.xcarchive'
+```
+
+The script copies the app into `Products/Applications` with `ditto`, preserves its signatures and framework symlinks, and records its bundle version, identifier, and available signer/team metadata. It refuses to replace an existing archive. It does not build, sign, upload, notarize, publish, or collect debug symbols. Keep the original build's debug symbols separately.
+
+Apple documents Xcode's archive distribution workflow, but does not publish a supported schema for manually constructed archive metadata. This script uses a small conventional archive layout. On October 9, 2026, Xcode 27.0 (27A266a) accepted the wrapper for local `developer-id` export and notarization upload using its signed-in account. Exported apps and nested Sparkle code passed strict signature verification with hardened runtime and secure timestamps; framework symlinks remained intact. Notarized exports passed stapler validation and Gatekeeper assessment. Other Xcode versions remain untested. If another version refuses to recognize the wrapper, use the `notarytool` packaging path above or create a native Xcode app archive.
+
+In Xcode's Organizer, select the archive and use Direct Distribution, or the custom Developer ID method and Upload destination where offered. That action submits the app to Apple's notary service. After acceptance, export the notarized app. Upload and acceptance are separate from creating the local archive.
+
+For command-line use, the installed `xcodebuild -help` lists `method=developer-id`, `destination=export` or `upload`, `teamID`, `signingStyle`, and `signingCertificate` export options. A local `destination=export` validates the archive/export path without submitting the app for notarization. The validated local export used manual signing with the certificate's exact SHA-1 identifier and its team ID. Create an ignored export-options plist using the values for your certificate:
+
+```sh
+mkdir -p build
+plutil -create xml1 build/XcodeExportOptions.plist
+plutil -insert method -string developer-id build/XcodeExportOptions.plist
+plutil -insert destination -string export build/XcodeExportOptions.plist
+plutil -insert signingStyle -string manual build/XcodeExportOptions.plist
+plutil -insert signingCertificate -string "$RELEASE_SIGNING_CERTIFICATE" build/XcodeExportOptions.plist
+plutil -insert teamID -string "$RELEASE_TEAM_ID" build/XcodeExportOptions.plist
+xcodebuild -exportArchive \
+  -archivePath 'dist/Mac Stats.xcarchive' \
+  -exportPath 'dist/xcode-export' \
+  -exportOptionsPlist build/XcodeExportOptions.plist
+```
+
+Set `RELEASE_SIGNING_CERTIFICATE` to the certificate SHA-1 identifier from `security find-identity -v -p codesigning` and `RELEASE_TEAM_ID` to its team ID before running those commands. Local export re-signs the copied app for distribution and adds a secure timestamp; it does not notarize the app. For notarization, copy the options plist, change `destination` to `upload`, and run the same `-exportArchive` command with that copy. Upload success is not notarization acceptance. After Apple accepts the submission, use:
+
+```sh
+xcodebuild -exportNotarizedApp \
+  -archivePath 'dist/Mac Stats.xcarchive' \
+  -exportPath 'dist/notarized'
+```
+
+Verify the exported app with `codesign --verify --deep --strict`, `xcrun stapler validate`, and `spctl --assess --type execute` before making its distribution archive. See [Apple's Xcode notarization workflow](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution) and [distribution signing guidance](https://developer.apple.com/documentation/xcode/creating-distribution-signed-code-for-the-mac/).
+
 ## Signed appcast and update test
 
 Copy the notarized archive into a dedicated release archive directory, preserving earlier release archives. Run Sparkle's `generate_appcast` with that directory and its real public download URL prefix:
 
 ```sh
 .build/artifacts/sparkle/Sparkle/bin/generate_appcast \
-  --download-url-prefix 'https://your-update-host.example/mac-stats/releases/' \
+  --account com.parkerrex.mac-stats \
+  --download-url-prefix 'https://github.com/ParkerRex/mac-stats/releases/download/v0.1.0/' \
+  --maximum-deltas 0 \
   /path/to/release-archives
 ```
 
@@ -73,7 +118,7 @@ Publish archives and any generated delta files before publishing the appcast tha
 
 Before announcing a release, install a genuine older Developer ID signed, notarized build in `/Applications`. Update to the new signed, notarized build through Sparkle. Verify manual Check for Updates, automatic checks disabled, automatic checks enabled, the quiet inline reminder when the panel opens, cancellation, failed downloads, and successful replacement/relaunch. Scheduled discovery must not open an unsolicited alert, including near launch. Keep HTML release notes disabled to preserve the no-web-view design.
 
-For the public download, test fresh installation and launch on supported macOS versions and both architectures. Record evidence in `docs/VALIDATION.md`. Only then attach the notarized archive to a public GitHub release. No release binary or appcast should be advertised as ready until this validation is complete.
+Attach the notarized archive and generated appcast to a clearly marked GitHub prerelease while verifying the update path. This provides a real HTTPS download endpoint without announcing the build as stable. After successful installation/update checks, promote the release and mark it latest so the production feed URL resolves. Test available macOS versions and architectures and record the exact tested combinations in `docs/VALIDATION.md`; do not imply runtime coverage from cross-compilation alone. The first release was run on Apple silicon; Intel and earlier macOS runtime checks remain follow-up work.
 
 ## References
 

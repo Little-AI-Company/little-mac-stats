@@ -57,6 +57,36 @@ import Testing
     #expect(ProcessClassification.attribution(for: process, byPID: [101: otherUser]).name == "python3")
 }
 
+@Test func sharedAncestorResolutionPreservesNearestApplicationAndToolPriority() {
+    let parent = fixture(pid: 101, parent: 1, path: "/Applications/Terminal.app/Contents/MacOS/Terminal", cpu: 1)
+    let first = fixture(pid: 102, parent: 101, path: "/Applications/First.app/Contents/MacOS/First", cpu: 2)
+    let second = fixture(pid: 103, parent: 101, path: "/Applications/Second.app/Contents/MacOS/Second", cpu: 3)
+    let compiler = fixture(pid: 104, parent: 102, path: "/usr/bin/clang", cpu: 4)
+    let records = [parent, first, second, compiler]
+    let samples = Dictionary(uniqueKeysWithValues: records.map { ($0.identity, sample($0)) })
+    let groups = ProcessClassification.groups(records: records, samples: samples)
+    #expect(groups.first { $0.name == "First" }?.cpuPercent == 6)
+    #expect(groups.first { $0.name == "Second" }?.cpuPercent == 3)
+    #expect(groups.first { $0.name == "Terminal" }?.cpuPercent == 1)
+
+    let codex = fixture(pid: 101, parent: 1, path: "/opt/bin/codex", cpu: 1)
+    let toolGroups = ProcessClassification.groups(records: [codex, first, second, compiler], samples: samples)
+    #expect(toolGroups.count == 1)
+    #expect(toolGroups.first?.name == "Codex")
+    #expect(toolGroups.first?.cpuPercent == 10)
+}
+
+@Test func executableChangesWithSameStartIdentityRefreshClassification() {
+    let before = fixture(pid: 101, parent: 1, path: "/opt/bin/codex", cpu: 1)
+    let after = fixture(pid: 101, parent: 1, path: "/usr/bin/python3", cpu: 1)
+    let child = fixture(pid: 102, parent: 101, path: "/bin/zsh", cpu: 2)
+    let samples = Dictionary(uniqueKeysWithValues: [before, child].map { ($0.identity, sample($0)) })
+    #expect(ProcessClassification.groups(records: [before, child], samples: samples).count == 1)
+    let refreshed = ProcessClassification.groups(records: [after, child], samples: samples)
+    #expect(refreshed.count == 2)
+    #expect(!refreshed.contains { $0.name == "Codex" })
+}
+
 @Test func terminationRejectsReusedPIDAndProtectedProcesses() throws {
     let expected = ProcessIdentity(pid: 200, uid: 501, startTimeMicroseconds: 100)
     #expect(throws: ProcessCoreError.self) {

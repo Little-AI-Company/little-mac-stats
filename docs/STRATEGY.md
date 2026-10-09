@@ -6,8 +6,8 @@ Answer two questions immediately: How busy is my Mac, and which app or AI tool i
 
 ## First release
 
-- A small monochrome fill meter in the menu bar. No battery silhouette, color, or continuous animation.
-- A native, compact popover with total CPU and a descending list of app/tool groups.
+- A compact native CPU percentage in the menu bar, with a fixed width. The custom meter was removed following user feedback. No icon, color coding, or continuous animation.
+- A native, compact popover with total CPU, a measured 60-second history, and app/tool groups. Comparable usage bars retain exact numbers. Search and disclosure reveal individual processes; interaction holds row order stable while values update.
 - CPU uses the capacity of the entire Mac as 100 percent, including on multicore machines.
 - Recognize Codex and Claude, their app helpers, CLI processes, and descendant work. Retain visibility of ordinary apps and unclassified processes. Attribution is based on available process ancestry and executable identity, not AI inference.
 - Expand a group to inspect individual processes. Explicit, confirmed Quit and Force Quit actions identify the selected process or group. Recheck the PID, start time, and ownership immediately before signalling. Reject known stale identities, other users, protected system processes, and this utility. POSIX signalling still has a narrow check-to-signal race, documented in validation.

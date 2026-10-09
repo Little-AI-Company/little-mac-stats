@@ -3,6 +3,13 @@ import ProcessCore
 
 @MainActor
 final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSMenuItemValidation, NSWindowDelegate {
+    private enum CPUStatus: Equatable {
+        case measuring
+        case sampled(Int)
+        case unavailable
+        case paused
+    }
+
     private let sampler = ProcessSampler()
     private let terminator = ProcessTerminator()
     private let updates = UpdateController()
@@ -16,8 +23,8 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
     private var hasSystemBaseline = false
     private var hasProcessBaseline = false
     private var sleeping = false
-    private var renderedMeterLevel: Int?
-    private var meterHasRendered = false
+    private var renderedCPUStatus: CPUStatus?
+    private lazy var statusMenu = makeApplicationMenu()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         installMenu()
@@ -29,13 +36,14 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
             else { self.popover.performClose(nil) }
         }
         self.panel = panel
+        let panelSize = panel.preferredContentSize
         if CommandLine.arguments.contains("--show-window") {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 420, height: 450),
+            let window = NSWindow(contentRect: NSRect(origin: .zero, size: panelSize),
                                   styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             window.title = "Mac Stats"
             window.contentViewController = panel
-            window.setContentSize(NSSize(width: 420, height: 450))
-            window.contentMinSize = NSSize(width: 420, height: 450)
+            window.setContentSize(panelSize)
+            window.contentMinSize = panelSize
             window.isReleasedWhenClosed = false
             window.delegate = self
             window.center()
@@ -46,18 +54,22 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
         }
         popover.behavior = .transient
         popover.delegate = self
-        popover.contentSize = NSSize(width: 420, height: 450)
+        popover.contentSize = panelSize
 
-        let item = NSStatusBar.system.statusItem(withLength: 30)
+        let statusFont = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        let statusWidth = ceil(("100%" as NSString).size(withAttributes: [.font: statusFont]).width) + 16
+        let item = NSStatusBar.system.statusItem(withLength: statusWidth)
         if let button = item.button {
-            button.image = CPUMeter.image(percent: nil)
+            button.font = statusFont
+            button.alignment = .center
             button.target = self
             button.action = #selector(togglePanel(_:))
-            button.toolTip = "Mac Stats: measuring CPU usage"
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.setAccessibilityLabel("Mac Stats")
             button.setAccessibilityHelp("Open CPU usage and running processes")
         }
         statusItem = item
+        updateCPUStatus(.measuring)
         let center = NSWorkspace.shared.notificationCenter
         center.addObserver(self, selector: #selector(willSleep(_:)), name: NSWorkspace.willSleepNotification, object: nil)
         center.addObserver(self, selector: #selector(didWake(_:)), name: NSWorkspace.didWakeNotification, object: nil)
@@ -73,6 +85,11 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
     }
 
     @objc private func togglePanel(_ sender: Any?) {
+        if let button = statusItem?.button, NSApp.currentEvent?.type == .rightMouseUp {
+            popover.performClose(sender)
+            statusMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
+            return
+        }
         if let window = validationWindow {
             if window.isVisible && !window.isMiniaturized { window.performClose(sender) }
             else { showValidationWindow(); startSampling() }
@@ -155,9 +172,9 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
                     }
                 } catch {
                     guard !Task.isCancelled, generation == self.sampleGeneration else { return }
-                    self.updateMeter(nil)
-                    self.statusItem?.button?.toolTip = "Mac Stats: CPU sampling unavailable"
-                    self.panel?.showSamplingError(error.localizedDescription)
+                    self.updateCPUStatus(.unavailable)
+                    self.panel?.recordSystemSample(percent: nil, timestamp: Date())
+                    if self.isProcessPanelVisible { self.panel?.showSamplingError(error.localizedDescription) }
                 }
                 do {
                     try await Task.sleep(for: detailed ? .seconds(1) : .seconds(2))
@@ -167,12 +184,10 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
     }
 
     private func render(_ snapshot: SamplingSnapshot, systemReady: Bool, processesReady: Bool) {
-        let value = systemReady ? snapshot.systemCPUPercent : nil
-        updateMeter(value)
-        statusItem?.button?.toolTip = value.map { "Mac Stats: \(Int($0.rounded()))% of total CPU capacity" }
-            ?? "Mac Stats: measuring CPU usage"
-        statusItem?.button?.setAccessibilityValue(value.map { "\(Int($0.rounded())) percent CPU" } ?? "Measuring CPU")
-        if snapshot.includesProcesses {
+        let value = systemReady && snapshot.systemCPUPercent.isFinite ? snapshot.systemCPUPercent : nil
+        updateCPUStatus(value.map { .sampled(Int(max(0, min($0, 100)).rounded())) } ?? .measuring)
+        panel?.recordSystemSample(percent: value, timestamp: snapshot.timestamp)
+        if snapshot.includesProcesses && isProcessPanelVisible {
             panel?.update(snapshot, systemReady: systemReady, processesReady: processesReady)
         }
     }
@@ -181,10 +196,10 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
         sleeping = true
         samplingTask?.cancel()
         sampleGeneration += 1
+        panel?.resetSystemHistory()
         popover.performClose(nil)
         if validationWindow != nil { panel?.showSamplingError("Sampling paused during sleep.") }
-        updateMeter(nil)
-        statusItem?.button?.toolTip = "Mac Stats: sampling paused during sleep"
+        updateCPUStatus(.paused)
     }
 
     @objc private func didWake(_ notification: Notification) {
@@ -208,21 +223,63 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
 
     @objc private func checkForUpdates(_ sender: Any?) { updates.checkForUpdates() }
 
+    @objc private func focusSearch(_ sender: Any?) {
+        if !isProcessPanelVisible { togglePanel(sender) }
+        panel?.focusSearch()
+    }
+
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         menuItem.action != #selector(checkForUpdates(_:)) || updates.canCheckForUpdates
     }
 
-    private func updateMeter(_ percent: Double?) {
-        let level = percent.map { Int((max(0, min($0, 100)) * 18 / 100).rounded()) }
-        guard !meterHasRendered || level != renderedMeterLevel else { return }
-        meterHasRendered = true
-        renderedMeterLevel = level
-        statusItem?.button?.image = CPUMeter.image(percent: level.map { Double($0) * 100 / 18 })
+    private func updateCPUStatus(_ status: CPUStatus) {
+        guard status != renderedCPUStatus, let button = statusItem?.button else { return }
+        renderedCPUStatus = status
+        switch status {
+        case .measuring:
+            button.title = "…"
+            button.toolTip = "Mac Stats: measuring CPU usage"
+            button.setAccessibilityValue("Measuring CPU")
+        case .sampled(let percent):
+            button.title = "\(percent)%"
+            button.toolTip = "Mac Stats: \(percent)% of total CPU capacity"
+            button.setAccessibilityValue("\(percent) percent CPU")
+        case .unavailable:
+            button.title = "…"
+            button.toolTip = "Mac Stats: CPU sampling unavailable"
+            button.setAccessibilityValue("CPU sampling unavailable")
+        case .paused:
+            button.title = "…"
+            button.toolTip = "Mac Stats: sampling paused during sleep"
+            button.setAccessibilityValue("Sampling paused")
+        }
     }
 
     private func installMenu() {
         let mainMenu = NSMenu()
         let applicationItem = NSMenuItem()
+        applicationItem.submenu = makeApplicationMenu()
+        mainMenu.addItem(applicationItem)
+        let editItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        for (title, action, key) in [
+            ("Cut", #selector(NSText.cut(_:)), "x"),
+            ("Copy", #selector(NSText.copy(_:)), "c"),
+            ("Paste", #selector(NSText.paste(_:)), "v"),
+            ("Select All", #selector(NSText.selectAll(_:)), "a")
+        ] {
+            editMenu.addItem(NSMenuItem(title: title, action: action, keyEquivalent: key))
+        }
+        editMenu.addItem(.separator())
+        let findItem = NSMenuItem(title: "Find Processes…", action: #selector(focusSearch(_:)), keyEquivalent: "f")
+        findItem.target = self
+        editMenu.addItem(findItem)
+        editItem.submenu = editMenu
+        mainMenu.addItem(editItem)
+        NSApp.mainMenu = mainMenu
+    }
+
+    private func makeApplicationMenu() -> NSMenu {
         let applicationMenu = NSMenu(title: "Mac Stats")
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings(_:)), keyEquivalent: ",")
         settingsItem.target = self
@@ -232,8 +289,6 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
         applicationMenu.addItem(updateItem)
         applicationMenu.addItem(.separator())
         applicationMenu.addItem(NSMenuItem(title: "Quit Mac Stats", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        applicationItem.submenu = applicationMenu
-        mainMenu.addItem(applicationItem)
-        NSApp.mainMenu = mainMenu
+        return applicationMenu
     }
 }

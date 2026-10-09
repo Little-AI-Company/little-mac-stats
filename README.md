@@ -2,9 +2,9 @@
 
 Mac Stats is a small native macOS menu bar utility for seeing total CPU usage and which apps or command-line tools are responsible.
 
-Click the monochrome meter to open a process list, sorted by CPU usage. Expand a group to inspect its processes. Quit and Force Quit require confirmation and recheck the process identity before sending a signal. Settings include launch at login and update checks. There are no web views, telemetry, accounts, or continuous animations.
+Click the CPU percentage in the menu bar to see a minute of CPU history and usage by app. Search for Codex, Claude, another app, or a process. Each row pairs a usage bar with its exact percentage. Expand a group to inspect its processes. Stop opens a native confirmation with Quit and Force Quit; the app rechecks the process identity before sending a signal. Settings include launch at login and update checks. There are no web views, telemetry, accounts, or continuous animations.
 
-The project currently publishes source. A notarized public binary and a production update feed are not available. Local packages are development builds. See [release requirements](docs/RELEASING.md) before distributing an app.
+Signed, notarized downloads are distributed through [GitHub Releases](https://github.com/ParkerRex/mac-stats/releases). Unzip the app, move it to Applications, and open it. The release archive supports Apple silicon and Intel; runtime validation was performed on Apple silicon with macOS 27.0.1. See [validation](docs/VALIDATION.md) for measured performance and remaining limits.
 
 ## Build and run
 
@@ -39,13 +39,13 @@ scripts/create_app_icon.sh
 
 The app groups processes using executable paths, app bundle identity, and visible parent processes. It recognizes Codex, Claude, and selected other tools. Descendant work remains in its tool group while ancestry is visible. Ordinary apps and unclassified processes remain visible. It does not infer ownership from command contents or AI output. Reparented children, shell scripts, shared services, inaccessible processes, and short-lived work can limit attribution. A group is the observed set of processes, not a promise that every resource used by an app is represented.
 
-System CPU is sampled every two seconds while the popover is closed. Detailed process sampling runs once per second while it is open. Sampling pauses during sleep and resets after wake. The first sample establishes a baseline. The app does not sample the GPU or report memory pressure.
+System CPU is sampled every two seconds while the popover is closed. Detailed process sampling runs once per second while it is open. Sampling pauses during sleep and resets after wake. The first sample establishes a baseline. History uses only measured values on a fixed 0–100% scale. Row order stays stable while you select, expand, or search; readings keep updating. The app does not sample the GPU or report memory pressure.
 
 Termination is limited to eligible processes owned by the current user. The app refuses protected system processes, itself, and stale process identities. Quit sends SIGTERM; Force Quit sends SIGKILL. A process can exit during an action, and macOS does not provide an atomic identity-checked signal API. Group actions can therefore partially complete; see [validation and limitations](docs/VALIDATION.md).
 
 ## Updates and privacy
 
-Development bundles without an HTTPS feed and Ed25519 public key show “Updates are not configured in this development build.” They do not start Sparkle's update cycle. In configured builds, automatic checks are off until enabled in Settings. Scheduled discovery adds an inline reminder when the popover is opened; Check for Updates uses Sparkle's native installation interface. Automatic installation and web-based release notes are disabled.
+Release builds use signed Sparkle updates, with the feed hosted on GitHub Releases. Automatic checks are off until enabled in Settings. Scheduled discovery adds a quiet reminder to the app; Options → Check for Updates opens Sparkle's native installation interface. Automatic installation and web-based release notes are disabled. Development bundles without an HTTPS feed and Ed25519 public key disable the updater and explain why.
 
 Process data stays on the Mac. Mac Stats does not transmit process names, paths, CPU samples, or usage analytics. Configured Sparkle checks contact the update feed and download host; those servers can receive standard network information such as the client's IP address. Sparkle system profiling is disabled.
 
@@ -57,6 +57,6 @@ Process data stays on the Mac. Mac Stats does not transmit process names, paths,
 - `Tests/ProcessCoreTests`: focused behavior tests.
 - `scripts`: local icon generation and app packaging. No recurring GitHub Actions are required.
 
-Measured overhead and test evidence belong in [docs/VALIDATION.md](docs/VALIDATION.md). The design and intended scope are recorded in [docs/STRATEGY.md](docs/STRATEGY.md).
+Measured overhead and test evidence belong in [docs/VALIDATION.md](docs/VALIDATION.md). The design and intended scope are recorded in [docs/STRATEGY.md](docs/STRATEGY.md), with [Apple HIG review criteria](docs/NATIVE-DESIGN.md).
 
 Mac Stats is [MIT licensed](LICENSE), copyright 2026 Parker Rex. Sparkle and its bundled components have their own notices; packaging includes the complete Sparkle license in the app's resources. See [Sparkle's license](https://github.com/sparkle-project/Sparkle/blob/2.10.0/LICENSE).

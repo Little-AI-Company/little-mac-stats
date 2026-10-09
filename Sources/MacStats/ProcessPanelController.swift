@@ -4,184 +4,266 @@ import ProcessCore
 
 @MainActor
 private final class GroupRow: NSObject {
-    var group: ProcessGroup
+    var group: ProcessGroup {
+        didSet {
+            if group.name != oldValue.name { searchQuery = nil }
+        }
+    }
     var children: [ProcessRow]
+    var visibleChildren: [ProcessRow]
+    var searchQuery: String?
+    var matchesSearch = false
     init(_ group: ProcessGroup) {
         self.group = group
         children = group.processes.map(ProcessRow.init)
+        visibleChildren = children
     }
 }
 
 @MainActor
 private final class ProcessRow: NSObject {
-    var process: ProcessSample
+    var process: ProcessSample {
+        didSet {
+            if process.name != oldValue.name || process.executablePath != oldValue.executablePath {
+                searchQuery = nil
+            }
+        }
+    }
+    var searchQuery: String?
+    var matchesSearch = false
     init(_ process: ProcessSample) { self.process = process }
 }
 
 @MainActor
 private final class ProcessOutlineView: NSOutlineView {
     var onClose: (() -> Void)?
+    var onInteraction: (() -> Void)?
     override func keyDown(with event: NSEvent) {
+        onInteraction?()
         if event.keyCode == 53 { onClose?() } else { super.keyDown(with: event) }
+    }
+    override func mouseDown(with event: NSEvent) {
+        onInteraction?()
+        super.mouseDown(with: event)
+    }
+    override func scrollWheel(with event: NSEvent) {
+        onInteraction?()
+        super.scrollWheel(with: event)
     }
 }
 
 @MainActor
-final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate {
+final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSSearchFieldDelegate {
     var onSettings: (() -> Void)?
     var onClose: (() -> Void)?
     private let terminator: ProcessTerminator
     private let updates: UpdateController
-    private let updateButton = NSButton(title: "Check for Updates…", target: nil, action: nil)
-    private let totalLabel = NSTextField(labelWithString: "CPU: measuring…")
+    private let updateItem = NSMenuItem(title: "Check for Updates…", action: nil, keyEquivalent: "")
+    private let totalLabel = NSTextField(labelWithString: "Measuring…")
     private let sampleLabel = NSTextField(labelWithString: "Collecting a process sample…")
-    private let unavailableLabel = NSTextField(wrappingLabelWithString: "")
+    private let historyView = CPUHistoryView()
+    private let searchField = NSSearchField()
     private let outline = ProcessOutlineView()
-    private let quitButton = NSButton(title: "Quit", target: nil, action: nil)
-    private let forceQuitButton = NSButton(title: "Force Quit…", target: nil, action: nil)
+    private let stopButton = NSButton(title: "Stop…", target: nil, action: nil)
+    private var allGroups: [GroupRow] = []
     private var groups: [GroupRow] = []
     private var processesReady = false
     private var terminating = false
+    private var lastInteraction = Date.distantPast
+    private var history: [CPUHistorySample] = []
+    private var latestSystemPercent: Double?
+    private var latestSystemTimestamp = Date()
+    private var applicationIcons: [String: NSImage] = [:]
+    private var inspectedApplications: Set<String> = []
+    private var applicationIdentifiers: [String: String] = [:]
+    private let terminalIcon = NSImage(systemSymbolName: "terminal", accessibilityDescription: nil)
 
     init(terminator: ProcessTerminator, updates: UpdateController) {
         self.terminator = terminator
         self.updates = updates
         super.init(nibName: nil, bundle: nil)
+        preferredContentSize = NSSize(width: 468, height: 540)
     }
     required init?(coder: NSCoder) { nil }
 
     override func loadView() {
-        preferredContentSize = NSSize(width: 420, height: 450)
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 420, height: 450))
-        totalLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        view = NSView(frame: NSRect(origin: .zero, size: preferredContentSize))
+        let title = NSTextField(labelWithString: "CPU Usage")
+        title.font = .systemFont(ofSize: 13, weight: .semibold)
+        totalLabel.font = .monospacedDigitSystemFont(ofSize: 28, weight: .medium)
+        totalLabel.setAccessibilityLabel("Total CPU usage")
+        totalLabel.toolTip = "100% means all CPU capacity is in use."
+        totalLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        historyView.toolTip = "Measured CPU usage over the last 60 seconds, on a fixed 0–100% scale."
+        searchField.placeholderString = "Search apps and processes"
+        searchField.delegate = self
+        searchField.sendsSearchStringImmediately = true
+        searchField.setAccessibilityLabel("Search apps and processes")
         sampleLabel.font = .systemFont(ofSize: 11)
         sampleLabel.textColor = .secondaryLabelColor
+        sampleLabel.lineBreakMode = .byTruncatingTail
+
         let nameColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
-        nameColumn.title = "App or process"
+        nameColumn.title = "App or Process"
         nameColumn.width = 300
-        nameColumn.minWidth = 150
+        nameColumn.minWidth = 180
         nameColumn.resizingMask = .autoresizingMask
         let cpuColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("cpu"))
         cpuColumn.title = "CPU"
-        cpuColumn.width = 65
-        cpuColumn.minWidth = 65
-        cpuColumn.maxWidth = 65
+        cpuColumn.headerToolTip = "Percent of total CPU capacity. Every bar uses the same 0–100% scale."
+        cpuColumn.width = 122
+        cpuColumn.minWidth = 122
+        cpuColumn.maxWidth = 122
         cpuColumn.resizingMask = []
         outline.addTableColumn(nameColumn)
         outline.addTableColumn(cpuColumn)
         outline.outlineTableColumn = nameColumn
         outline.delegate = self
         outline.dataSource = self
-        outline.rowHeight = 24
+        outline.rowHeight = 27
         outline.intercellSpacing = NSSize(width: 4, height: 0)
         outline.style = .plain
-        outline.indentationPerLevel = 12
+        outline.indentationPerLevel = 14
         outline.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
-        outline.frame = NSRect(x: 0, y: 0, width: 394, height: 230)
-        outline.autoresizingMask = [.width]
+        outline.frame = NSRect(x: 0, y: 0, width: 440, height: 315)
         outline.allowsMultipleSelection = false
         outline.setAccessibilityLabel("CPU usage by app and process")
         outline.onClose = { [weak self] in self?.onClose?() }
+        outline.onInteraction = { [weak self] in self?.lastInteraction = Date() }
         let scrollView = NSScrollView()
         scrollView.documentView = outline
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
-        scrollView.borderType = .bezelBorder
+        scrollView.borderType = .noBorder
         scrollView.setAccessibilityLabel("Running apps and processes")
 
-        let explanation = NSTextField(wrappingLabelWithString: "100% means your Mac is fully busy. Apps include the work they start.")
-        explanation.font = .systemFont(ofSize: 11)
-        explanation.textColor = .secondaryLabelColor
-        unavailableLabel.font = .systemFont(ofSize: 11)
-        unavailableLabel.textColor = .secondaryLabelColor
-        quitButton.target = self
-        quitButton.action = #selector(quitSelected(_:))
-        forceQuitButton.target = self
-        forceQuitButton.action = #selector(forceQuitSelected(_:))
-        quitButton.toolTip = "Request that the selected app or process quits"
-        forceQuitButton.toolTip = "Immediately stop the selected app or process after confirmation"
-        let settingsButton = NSButton(title: "Settings…", target: self, action: #selector(showSettings(_:)))
-        let actions = NSStackView(views: [quitButton, forceQuitButton, NSView(), settingsButton])
-        actions.orientation = .horizontal
-        actions.spacing = 8
-        updateButton.target = self
-        updateButton.action = #selector(checkUpdates(_:))
-        let quitAppButton = NSButton(title: "Quit Mac Stats", target: NSApp, action: #selector(NSApplication.terminate(_:)))
-        let applicationActions = NSStackView(views: [updateButton, NSView(), quitAppButton])
-        applicationActions.orientation = .horizontal
-        applicationActions.spacing = 8
-        for component in [totalLabel, sampleLabel, scrollView, explanation, unavailableLabel, actions, applicationActions] {
+        stopButton.target = self
+        stopButton.action = #selector(stopSelected(_:))
+        stopButton.toolTip = "Choose whether to quit or force quit the selected app or process."
+        let optionsButton = NSPopUpButton(frame: .zero, pullsDown: true)
+        optionsButton.bezelStyle = .texturedRounded
+        optionsButton.menu = optionsMenu()
+        optionsButton.setAccessibilityLabel("Mac Stats options")
+        let separator = NSBox()
+        separator.boxType = .separator
+        for component in [title, totalLabel, historyView, searchField, scrollView, separator, sampleLabel, stopButton, optionsButton] {
             component.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(component)
         }
         NSLayoutConstraint.activate([
-            totalLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 14),
-            totalLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
-            sampleLabel.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 6),
-            sampleLabel.leadingAnchor.constraint(equalTo: totalLabel.leadingAnchor),
-            sampleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
-            scrollView.topAnchor.constraint(equalTo: totalLabel.bottomAnchor, constant: 10),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
-            explanation.topAnchor.constraint(equalTo: sampleLabel.bottomAnchor, constant: 4),
-            explanation.leadingAnchor.constraint(equalTo: totalLabel.leadingAnchor),
-            explanation.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
-            unavailableLabel.topAnchor.constraint(equalTo: explanation.bottomAnchor, constant: 3),
-            unavailableLabel.leadingAnchor.constraint(equalTo: totalLabel.leadingAnchor),
-            unavailableLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
-            actions.topAnchor.constraint(equalTo: unavailableLabel.bottomAnchor, constant: 8),
-            actions.leadingAnchor.constraint(equalTo: totalLabel.leadingAnchor),
-            actions.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
-            applicationActions.topAnchor.constraint(equalTo: actions.bottomAnchor, constant: 6),
-            applicationActions.leadingAnchor.constraint(equalTo: totalLabel.leadingAnchor),
-            applicationActions.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
-            applicationActions.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
-            scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 230),
-            view.widthAnchor.constraint(greaterThanOrEqualToConstant: 420)
+            title.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
+            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            totalLabel.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 3),
+            totalLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            totalLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 140),
+            historyView.leadingAnchor.constraint(equalTo: totalLabel.trailingAnchor, constant: 14),
+            historyView.topAnchor.constraint(equalTo: title.topAnchor),
+            historyView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            historyView.heightAnchor.constraint(equalToConstant: 70),
+            searchField.topAnchor.constraint(equalTo: historyView.bottomAnchor, constant: 12),
+            searchField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
+            searchField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
+            scrollView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 10),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
+            separator.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 6),
+            separator.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            separator.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            sampleLabel.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 8),
+            sampleLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            sampleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            stopButton.topAnchor.constraint(equalTo: sampleLabel.bottomAnchor, constant: 9),
+            stopButton.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            stopButton.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
+            optionsButton.centerYAnchor.constraint(equalTo: stopButton.centerYAnchor),
+            optionsButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 270),
+            view.widthAnchor.constraint(greaterThanOrEqualToConstant: 468)
         ])
+        updateSystemDisplay()
         updateActions()
         refreshUpdates()
         observeUpdates()
     }
 
-    func focusTable() {
-        view.window?.makeFirstResponder(outline)
+    private func optionsMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        menu.addItem(withTitle: "Options", action: nil, keyEquivalent: "")
+        let settings = NSMenuItem(title: "Settings…", action: #selector(showSettings(_:)), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
+        updateItem.target = self
+        updateItem.action = #selector(checkUpdates(_:))
+        menu.addItem(updateItem)
+        menu.addItem(.separator())
+        let quit = NSMenuItem(title: "Quit Mac Stats", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.target = NSApp
+        menu.addItem(quit)
+        return menu
+    }
+
+    func focusTable() { view.window?.makeFirstResponder(outline) }
+    func focusSearch() {
+        loadViewIfNeeded()
+        view.window?.makeFirstResponder(searchField)
+    }
+
+    func recordSystemSample(percent: Double?, timestamp: Date) {
+        let value = percent.flatMap { $0.isFinite ? max(0, min($0, 100)) : nil }
+        latestSystemPercent = value
+        latestSystemTimestamp = timestamp
+        history.append(CPUHistorySample(timestamp: timestamp, percent: value))
+        history.removeAll { timestamp.timeIntervalSince($0.timestamp) > 60 }
+        // Closed-panel samples keep history current without loading or repainting its views.
+    }
+
+    func resetSystemHistory() {
+        history = []
+        latestSystemPercent = nil
+    }
+
+    private func updateSystemDisplay() {
+        let text = latestSystemPercent.map { "\($0.formatted(.number.precision(.fractionLength(1))))%" } ?? "Measuring…"
+        if totalLabel.stringValue != text { totalLabel.stringValue = text }
+        historyView.update(samples: history, endTime: latestSystemTimestamp)
     }
 
     func beginMeasuring() {
         loadViewIfNeeded()
         processesReady = false
-        sampleLabel.stringValue = "Collecting a process sample…"
-        unavailableLabel.stringValue = ""
+        sampleLabel.stringValue = "Measuring app usage…"
+        allGroups = []
         groups = []
         outline.reloadData()
+        updateSystemDisplay()
         updateActions()
     }
 
     func update(_ snapshot: SamplingSnapshot, systemReady: Bool, processesReady: Bool) {
         loadViewIfNeeded()
         self.processesReady = processesReady
-        totalLabel.stringValue = systemReady
-            ? "CPU: \(snapshot.systemCPUPercent.formatted(.number.precision(.fractionLength(1))))%"
-            : "CPU: measuring…"
-        sampleLabel.stringValue = processesReady
-            ? "\(snapshot.groups.count) apps and processes"
-            : "Measuring app usage…"
-        unavailableLabel.stringValue = snapshot.unavailableProcessCount > 0
-            ? "Some process details are unavailable."
-            : ""
-        unavailableLabel.toolTip = snapshot.unavailableProcessCount > 0
-            ? "\(snapshot.unavailableProcessCount) process readings unavailable. Total CPU includes all work."
-            : nil
+        updateSystemDisplay()
         apply(snapshot.groups)
+        if processesReady {
+            let count = searchField.stringValue.isEmpty ? snapshot.groups.count : groups.count
+            let text = (count == 1 ? "1 app or process" : "\(count) apps and processes")
+                + (snapshot.unavailableProcessCount > 0 ? " · Some readings unavailable" : "")
+            if sampleLabel.stringValue != text { sampleLabel.stringValue = text }
+        } else {
+            sampleLabel.stringValue = "Measuring app usage…"
+        }
+        let tooltip = "100% uses all CPU capacity. Groups include their child processes. \(snapshot.unavailableProcessCount) process readings unavailable; total CPU includes all work."
+        if sampleLabel.toolTip != tooltip { sampleLabel.toolTip = tooltip }
         updateActions()
     }
 
     func showSamplingError(_ message: String) {
         loadViewIfNeeded()
-        totalLabel.stringValue = "CPU unavailable"
+        updateSystemDisplay()
+        totalLabel.stringValue = "Unavailable"
         sampleLabel.stringValue = message
-        unavailableLabel.stringValue = ""
+        allGroups = []
         groups = []
         outline.reloadData()
         updateActions()
@@ -190,13 +272,14 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
     private func apply(_ incoming: [ProcessGroup]) {
         let selectedKey = selectionKey()
         let expanded = Set(groups.filter { outline.isItemExpanded($0) }.map { $0.group.id })
-        let oldStructure = groups.map { ($0.group.id, $0.children.map { $0.process.identity }) }
-        let structureChanged = oldStructure.count != incoming.count || zip(oldStructure, incoming).contains {
-            $0.0.0 != $0.1.id || $0.0.1 != $0.1.processes.map(\.identity)
-        }
-        var existing = Dictionary(uniqueKeysWithValues: groups.map { ($0.group.id, $0) })
-        groups = incoming.map { group in
+        let oldStructure = visibleStructure()
+        let preserveOrder = selectedKey != nil || !searchField.stringValue.isEmpty || searchField.currentEditor() != nil
+            || !expanded.isEmpty || Date().timeIntervalSince(lastInteraction) < 3
+        let oldOrder = allGroups.map { $0.group.id }
+        var existing = Dictionary(uniqueKeysWithValues: allGroups.map { ($0.group.id, $0) })
+        var rows = incoming.map { group in
             guard let row = existing.removeValue(forKey: group.id) else { return GroupRow(group) }
+            let oldChildren = row.children.map { $0.process.identity }
             let children = Dictionary(uniqueKeysWithValues: row.children.map { ($0.process.identity, $0) })
             row.group = group
             row.children = group.processes.map { process in
@@ -204,19 +287,34 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
                 child.process = process
                 return child
             }
+            if preserveOrder {
+                let positions = Dictionary(uniqueKeysWithValues: oldChildren.enumerated().map { ($0.element, $0.offset) })
+                row.children.sort {
+                    let left = positions[$0.process.identity] ?? Int.max
+                    let right = positions[$1.process.identity] ?? Int.max
+                    return left == right ? $0.process.pid < $1.process.pid : left < right
+                }
+            }
             return row
         }
-        if structureChanged {
-            outline.reloadData()
-            for row in groups where expanded.contains(row.group.id) { outline.expandItem(row) }
-            if let selectedKey,
-               let row = (0..<outline.numberOfRows).first(where: { key(outline.item(atRow: $0)) == selectedKey }) {
-                outline.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
-            } else {
-                outline.deselectAll(nil)
+        if preserveOrder {
+            let positions = Dictionary(uniqueKeysWithValues: oldOrder.enumerated().map { ($0.element, $0.offset) })
+            rows.sort {
+                let left = positions[$0.group.id] ?? Int.max
+                let right = positions[$1.group.id] ?? Int.max
+                return left == right ? $0.group.id < $1.group.id : left < right
             }
+        }
+        allGroups = rows
+        filterGroups()
+        let structureChanged = oldStructure != visibleStructure()
+        if structureChanged {
+            reloadOutline(selectedKey: selectedKey, expanded: expanded)
         } else {
-            for row in 0..<outline.numberOfRows {
+            // Update values in place so selection and accessibility rows survive CPU changes.
+            let visibleRows = outline.rows(in: outline.visibleRect)
+            guard visibleRows.location != NSNotFound else { return }
+            for row in visibleRows.location..<min(NSMaxRange(visibleRows), outline.numberOfRows) {
                 for column in 0..<outline.numberOfColumns {
                     if let cell = outline.view(atColumn: column, row: row, makeIfNecessary: false) as? NSTableCellView {
                         configure(cell, item: outline.item(atRow: row), column: column)
@@ -224,6 +322,78 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
                 }
             }
         }
+    }
+
+    private func visibleStructure() -> [ObjectIdentifier] {
+        groups.flatMap { row in
+            [ObjectIdentifier(row)] + (outline.isItemExpanded(row) ? row.visibleChildren.map(ObjectIdentifier.init) : [])
+        }
+    }
+
+    private func filterGroups() {
+        let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if query.isEmpty {
+            groups = allGroups
+            for row in groups { row.visibleChildren = row.children }
+            return
+        }
+        groups = allGroups.filter { row in
+            if row.searchQuery != query {
+                row.searchQuery = query
+                row.matchesSearch = row.group.name.localizedStandardContains(query)
+            }
+            row.visibleChildren = row.matchesSearch ? row.children : row.children.filter { child in
+                if child.searchQuery != query {
+                    child.searchQuery = query
+                    child.matchesSearch = child.process.name.localizedStandardContains(query)
+                        || String(child.process.pid).contains(query)
+                        || child.process.executablePath.localizedStandardContains(query)
+                }
+                return child.matchesSearch
+            }
+            return row.matchesSearch || !row.visibleChildren.isEmpty
+        }
+    }
+
+    private func reloadOutline(selectedKey: String?, expanded: Set<String>) {
+        outline.reloadData()
+        for row in groups where expanded.contains(row.group.id) || !searchField.stringValue.isEmpty {
+            outline.expandItem(row)
+        }
+        if let selectedKey,
+           let row = (0..<outline.numberOfRows).first(where: { key(outline.item(atRow: $0)) == selectedKey }) {
+            outline.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        } else {
+            outline.deselectAll(nil)
+        }
+    }
+
+    func controlTextDidChange(_ notification: Notification) {
+        let selectedKey = selectionKey()
+        let expanded = Set(groups.filter { outline.isItemExpanded($0) }.map { $0.group.id })
+        filterGroups()
+        reloadOutline(selectedKey: selectedKey, expanded: expanded)
+        sampleLabel.stringValue = (groups.count == 1 ? "1 app or process" : "\(groups.count) apps and processes")
+            + (groups.isEmpty ? " found" : "")
+        updateActions()
+    }
+
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+            if !searchField.stringValue.isEmpty {
+                searchField.stringValue = ""
+                controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: searchField))
+            } else { onClose?() }
+            return true
+        }
+        if commandSelector == #selector(NSResponder.moveDown(_:)) {
+            focusTable()
+            if outline.selectedRow < 0, outline.numberOfRows > 0 {
+                outline.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+            }
+            return true
+        }
+        return false
     }
 
     private func key(_ item: Any?) -> String? {
@@ -240,14 +410,14 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
     }
 
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
-        (item as? GroupRow)?.children.count ?? (item == nil ? groups.count : 0)
+        (item as? GroupRow)?.visibleChildren.count ?? (item == nil ? groups.count : 0)
     }
     func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
-        if let group = item as? GroupRow { return group.children[index] }
+        if let group = item as? GroupRow { return group.visibleChildren[index] }
         return groups[index]
     }
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
-        (item as? GroupRow)?.children.isEmpty == false
+        (item as? GroupRow)?.visibleChildren.isEmpty == false
     }
 
     func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
@@ -256,22 +426,92 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         let cell: NSTableCellView
         if let existing = outlineView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView {
             cell = existing
+        } else if identifier.rawValue == "cpu" {
+            cell = CPUUsageCellView()
+            cell.textField?.alignment = .right
+            cell.textField?.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
         } else {
             cell = NSTableCellView()
-            cell.identifier = identifier
+            let imageView = NSImageView()
             let label = NSTextField(labelWithString: "")
+            imageView.translatesAutoresizingMaskIntoConstraints = false
             label.translatesAutoresizingMaskIntoConstraints = false
             label.lineBreakMode = .byTruncatingMiddle
+            label.font = .systemFont(ofSize: 13)
+            cell.addSubview(imageView)
             cell.addSubview(label)
+            cell.imageView = imageView
             cell.textField = label
             NSLayoutConstraint.activate([
-                label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 3),
-                label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -3),
+                imageView.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
+                imageView.widthAnchor.constraint(equalToConstant: 18),
+                imageView.heightAnchor.constraint(equalToConstant: 18),
+                imageView.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                label.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 6),
+                label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -4),
                 label.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
             ])
         }
+        cell.identifier = identifier
         configure(cell, item: item, column: identifier.rawValue == "cpu" ? 1 : 0)
         return cell
+    }
+
+    private func icon(for group: ProcessGroup) -> NSImage? {
+        let path: String?
+        if group.id.hasPrefix("application:") {
+            path = String(group.id.dropFirst("application:".count))
+        } else if group.id.hasPrefix("tool:") {
+            let tool = String(group.id.dropFirst("tool:".count))
+            let expectedIdentifier: String?
+            switch tool {
+            case "codex": expectedIdentifier = "com.openai.codex"
+            case "claude": expectedIdentifier = "com.anthropic.claudefordesktop"
+            default: expectedIdentifier = nil
+            }
+            let candidates = Set(group.processes.compactMap { process -> String? in
+                let components = process.executablePath.split(separator: "/")
+                guard let index = components.firstIndex(where: { $0.hasSuffix(".app") }) else { return nil }
+                return "/" + components[...index].joined(separator: "/")
+            }).sorted()
+            // A tool's descendants can include unrelated apps. Only its own bundle supplies its icon.
+            let identifierMatch = expectedIdentifier.flatMap { identifier in
+                candidates.first { candidate in
+                    if inspectedApplications.insert(candidate).inserted,
+                       let bundleIdentifier = Bundle(path: candidate)?.bundleIdentifier {
+                        applicationIdentifiers[candidate] = bundleIdentifier
+                    }
+                    return applicationIdentifiers[candidate] == identifier
+                }
+            }
+            path = identifierMatch ?? candidates.first {
+                URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent.lowercased() == tool
+            }
+        } else {
+            path = nil
+        }
+        guard let path else { return terminalIcon }
+        if let image = applicationIcons[path] { return image }
+        // Keep only the 18-point representation used by the list, rather than a full icon asset.
+        let image = autoreleasepool {
+            let source = NSWorkspace.shared.icon(forFile: path)
+            let size = NSSize(width: 18, height: 18)
+            guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 36, pixelsHigh: 36,
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+                  let context = NSGraphicsContext(bitmapImageRep: bitmap) else { return source }
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = context
+            source.draw(in: NSRect(x: 0, y: 0, width: 36, height: 36),
+                        from: .zero, operation: .copy, fraction: 1)
+            NSGraphicsContext.restoreGraphicsState()
+            bitmap.size = size
+            let image = NSImage(size: size)
+            image.addRepresentation(bitmap)
+            return image
+        }
+        applicationIcons[path] = image
+        return image
     }
 
     private func configure(_ cell: NSTableCellView, item: Any?, column: Int) {
@@ -285,19 +525,27 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
             readingAvailable = processesReady && group.group.processes.contains(where: \.cpuReadingAvailable)
             let missing = group.group.processes.filter { !$0.cpuReadingAvailable }.count
             tooltip = "\(name), \(group.children.count) processes\(missing > 0 ? ", \(missing) CPU readings unavailable" : "")"
+            if column == 0 {
+                let image = icon(for: group.group)
+                if cell.imageView?.image !== image { cell.imageView?.image = image }
+            }
         } else if let row = item as? ProcessRow {
             name = "\(row.process.name) (\(row.process.pid))"
             percent = row.process.cpuPercent
             readingAvailable = processesReady && row.process.cpuReadingAvailable
             tooltip = "\(row.process.executablePath)\n\(row.process.terminationRestriction ?? "Can request quit or force quit")"
+            if cell.imageView?.image != nil { cell.imageView?.image = nil }
         } else { return }
-        cell.textField?.stringValue = column == 0 ? name
-            : (readingAvailable ? "\(percent.formatted(.number.precision(.fractionLength(1))))%" : (processesReady ? "?" : "Wait"))
-        cell.textField?.alignment = column == 0 ? .left : .right
-        cell.textField?.font = column == 0 ? .systemFont(ofSize: 12)
-            : .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
-        cell.toolTip = readingAvailable ? tooltip : "\(tooltip)\n\(processesReady ? "CPU reading unavailable." : "Measuring CPU usage.")"
-        cell.textField?.setAccessibilityLabel(column == 0 ? name : "\(name), \(readingAvailable ? "\(percent.formatted(.number.precision(.fractionLength(1)))) percent CPU" : "CPU reading unavailable")")
+        let value = readingAvailable ? "\(percent.formatted(.number.precision(.fractionLength(1))))%" : (processesReady ? "?" : "Wait")
+        let text = column == 0 ? name : value
+        if cell.textField?.stringValue != text { cell.textField?.stringValue = text }
+        (cell as? CPUUsageCellView)?.usageBar.percent = readingAvailable ? percent : nil
+        let description = readingAvailable ? tooltip : "\(tooltip)\n\(processesReady ? "CPU reading unavailable." : "Measuring CPU usage.")"
+        if cell.toolTip != description { cell.toolTip = description }
+        let accessibilityLabel = column == 0 ? name : "\(name), \(readingAvailable ? "\(value.dropLast()) percent CPU" : "CPU reading unavailable")"
+        if cell.textField?.accessibilityLabel() != accessibilityLabel {
+            cell.textField?.setAccessibilityLabel(accessibilityLabel)
+        }
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) { updateActions() }
@@ -305,17 +553,16 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
     private func updateActions() {
         let item = outline.selectedRow >= 0 ? outline.item(atRow: outline.selectedRow) : nil
         let eligible = (item as? GroupRow)?.group.canTerminate ?? (item as? ProcessRow)?.process.canTerminate ?? false
-        quitButton.isEnabled = eligible && !terminating
-        forceQuitButton.isEnabled = eligible && !terminating
+        stopButton.isEnabled = eligible && !terminating
     }
 
     @objc private func showSettings(_ sender: Any?) { onSettings?() }
     @objc private func checkUpdates(_ sender: Any?) { updates.checkForUpdates() }
 
     private func refreshUpdates() {
-        updateButton.title = updates.availableVersion.map { "Update \($0)…" } ?? "Check for Updates…"
-        updateButton.isEnabled = updates.canCheckForUpdates
-        updateButton.toolTip = updates.statusText
+        updateItem.title = updates.availableVersion.map { "Update \($0)…" } ?? "Check for Updates…"
+        updateItem.isEnabled = updates.canCheckForUpdates
+        updateItem.toolTip = updates.statusText
     }
 
     private func observeUpdates() {
@@ -330,35 +577,43 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
             }
         }
     }
-    @objc private func quitSelected(_ sender: Any?) { confirmTermination(.quit) }
-    @objc private func forceQuitSelected(_ sender: Any?) { confirmTermination(.forceQuit) }
 
-    private func confirmTermination(_ mode: TerminationMode) {
+    @objc private func stopSelected(_ sender: Any?) {
         guard outline.selectedRow >= 0 else { return }
         let item = outline.item(atRow: outline.selectedRow)
+        // Capture immutable values before displaying the alert or awaiting any work.
         let group = (item as? GroupRow)?.group
         let process = (item as? ProcessRow)?.process
         guard group?.canTerminate == true || process?.canTerminate == true else { return }
-        let force = mode == .forceQuit
-        let verb = force ? "Force Quit" : "Quit"
         let name = group?.name ?? process?.name ?? "Process"
         let alert = NSAlert()
-        alert.messageText = "\(verb) \(name)?"
+        alert.messageText = "Stop \(name)?"
+        let target: String
         if let group {
             let identities = group.processes.prefix(5).map { "\($0.name) (PID \($0.pid))" }.joined(separator: ", ")
             let remaining = group.processes.count - 5
-            let summary = identities + (remaining > 0 ? ", and \(remaining) others" : "")
-            alert.informativeText = "This will \(force ? "immediately stop" : "ask to stop") all \(group.processes.count) processes in \(group.name): \(summary). Unsaved work may be lost."
+            target = "All \(group.processes.count) processes in \(group.name): \(identities)\(remaining > 0 ? ", and \(remaining) others" : "")."
         } else if let process {
-            alert.informativeText = "This will \(force ? "immediately stop" : "ask to stop") \(process.name), PID \(process.pid). Unsaved work may be lost."
-        }
+            target = "\(process.name), PID \(process.pid)."
+        } else { return }
+        alert.informativeText = "\(target)\n\nQuit requests a normal stop. Force Quit stops immediately. Unsaved work may be lost."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: verb)
+        alert.addButton(withTitle: "Quit")
+        alert.addButton(withTitle: "Force Quit")
         alert.buttons[0].keyEquivalent = "\r"
-        alert.buttons[1].keyEquivalent = ""
-        alert.buttons[1].hasDestructiveAction = true
-        guard alert.runModal() == .alertSecondButtonReturn else { return }
+        for button in alert.buttons.dropFirst() {
+            button.keyEquivalent = ""
+            button.hasDestructiveAction = true
+        }
+        let response = alert.runModal()
+        let mode: TerminationMode
+        switch response {
+        case .alertSecondButtonReturn: mode = .quit
+        case .alertThirdButtonReturn: mode = .forceQuit
+        default: return
+        }
+        let verb = mode == .forceQuit ? "force quit" : "quit"
         terminating = true
         updateActions()
         Task {
@@ -367,7 +622,7 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
                 else if let group { try await terminator.terminate(group, mode: mode) }
             } catch {
                 let failure = NSAlert()
-                failure.messageText = "Could not \(verb.lowercased()) \(name)"
+                failure.messageText = "Could not \(verb) \(name)"
                 failure.informativeText = error.localizedDescription
                 failure.runModal()
             }

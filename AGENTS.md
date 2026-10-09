@@ -2,12 +2,16 @@
 
 Build a small native macOS menu bar utility. Use plain language, precise names, strict Swift concurrency, and focused tests. No web views, telemetry, decorative cards, color-coded meters, or continuous animation.
 
-## Ownership for the initial implementation
+## Ownership for the native interface pass
 
-- Process executor: `Sources/ProcessCore/`, `Sources/ProcessProbe/`, `Tests/ProcessCoreTests/`.
-- Interface executor: `Sources/MacStats/` except `UpdateController.swift`.
-- Release executor: `Package.swift`, `Package.resolved`, `Sources/MacStats/UpdateController.swift`, `Resources/`, `scripts/`, `README.md`, `LICENSE`, `.gitignore`, and `docs/RELEASING.md`.
-- Orchestrator: integration, `docs/STRATEGY.md`, `docs/VALIDATION.md`, `assets/`, GitHub publication, and verification.
+- Data display executor: `Sources/MacStats/ProcessPanelController.swift` and new panel-specific history/bar views.
+- Native controls executor: `ApplicationDelegate.swift`, `SettingsWindowController.swift`, and `MacStatsApplication.swift` under `Sources/MacStats/`.
+- HIG reviewer: read-only source review and `docs/NATIVE-DESIGN.md`.
+- Release executor: `scripts/create_xcode_archive.sh` and `docs/RELEASING.md`.
+- Process performance executor: `Sources/ProcessCore/`, `Sources/ProcessProbe/`, and `Tests/ProcessCoreTests/`.
+- Orchestrator: integration, `docs/STRATEGY.md`, `docs/VALIDATION.md`, `README.md`, `assets/`, GitHub publication, signing, and verification.
+
+Performance changes must preserve sampling accuracy and process-identity checks. The updater remains unchanged unless an identified issue requires a coordinated fix.
 
 Other agents share this directory. Do not revert their edits. Coordinate API changes and report files changed.
 

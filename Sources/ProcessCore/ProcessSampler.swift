@@ -34,8 +34,9 @@ public actor ProcessSampler {
             let identifiers = try NativeProcessReader.processIDs()
             let records = identifiers.compactMap(NativeProcessReader.read)
             unavailableProcessCount = identifiers.count - records.count + records.filter { $0.cpuTicks == nil }.count
-            for record in records {
-                guard let application = ProcessClassification.application(for: record.executablePath),
+            let executables = ProcessClassification.executables(for: records)
+            for executable in executables.values {
+                guard let application = executable.application,
                       inspectedApplications.insert(application.id).inserted else { continue }
                 let path = String(application.id.dropFirst("application:".count))
                 switch Bundle(path: path)?.bundleIdentifier {
@@ -47,8 +48,12 @@ public actor ProcessSampler {
                 }
             }
             let ancestors = NativeProcessReader.ancestorIDs(of: getpid())
+            let currentUID = getuid()
+            let currentPID = getpid()
             var samples: [ProcessIdentity: ProcessSample] = [:]
             var counters: [ProcessIdentity: UInt64] = [:]
+            samples.reserveCapacity(records.count)
+            counters.reserveCapacity(records.count)
             for record in records {
                 var percent = 0.0
                 if let counter = record.cpuTicks {
@@ -60,13 +65,14 @@ public actor ProcessSampler {
                     counters[record.identity] = counter
                 }
                 let restriction = TerminationPolicy.restriction(identity: record.identity, realUID: record.realUID,
-                    path: record.executablePath, currentUID: getuid(), currentPID: getpid(), ancestors: ancestors)
+                    path: record.executablePath, currentUID: currentUID, currentPID: currentPID, ancestors: ancestors)
                 samples[record.identity] = ProcessSample(identity: record.identity, parentPID: record.parentPID,
                     name: record.name, executablePath: record.executablePath, cpuPercent: percent,
                     residentMemoryBytes: record.residentMemoryBytes, terminationRestriction: restriction,
                     cpuReadingAvailable: record.cpuTicks != nil)
             }
-            groups = ProcessClassification.groups(records: records, samples: samples, applicationTools: applicationTools)
+            groups = ProcessClassification.groups(records: records, samples: samples,
+                                                   applicationTools: applicationTools, executables: executables)
             previousProcesses = counters
             previousProcessTime = now
         } else {
