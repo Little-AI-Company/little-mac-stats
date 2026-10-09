@@ -1,6 +1,6 @@
 I made this to see which AI bot is eating my CPU without digging through traces or dealing with bloated, slow stats apps.
 
-If you want to send a PR, feel free to [hit me up](https://github.com/ParkerRex/mac-stats/issues). Please don't throw slop grenades at me.
+If you want to contribute, feel free to [open a PR](https://github.com/ParkerRex/mac-stats/compare) and read the [contribution guide](CONTRIBUTING.md). Please don't throw slop grenades at me.
 
 **Everything below here is AI slop.**
 
