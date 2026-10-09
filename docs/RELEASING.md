@@ -1,6 +1,6 @@
 # Releasing Mac Stats
 
-Version 0.1.0, build 3 is the notarized public prerelease. The next stable patch is 0.1.1, build 4, which is now the canonical version in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.parkerrex.mac-stats`. Developer ID signing, Xcode archive upload, notarized export, stapling, Gatekeeper acceptance, and Sparkle installation from baseline build 1 to build 3 have been validated. Build 4 signing, notarization, publication, and the installed build 3 to build 4 update check remain pending. See [validation](VALIDATION.md) for evidence and remaining limits.
+Version 0.1.0, build 3 is the notarized public prerelease. The stable release is 0.1.1, build 4, which is the canonical version in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.parkerrex.mac-stats`. Developer ID signing, Xcode archive upload, notarized export, stapling, Gatekeeper acceptance, and Sparkle installation from baseline build 1 to build 3 have been validated. The production build 3 to build 4 update also passed, including download, installation, relaunch, executable-hash comparison, and signature/ticket checks. See [validation](VALIDATION.md) for evidence and remaining limits.
 
 ## Local development package
 

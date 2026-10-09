@@ -52,6 +52,8 @@ The menu bar now uses system text and updates only when its rounded CPU value or
 | Full app resident memory after native inspection | 309.95 MiB | 138.70 MiB |
 | Full app physical footprint reported by `sample` | 147.0 MB | 51.1 MB |
 
+After the production update, a fresh normal menu-bar launch with no UI automation used 0.03 CPU seconds over 20.043 seconds, approximately 0.015% of whole-machine CPU. Resident memory was 72.94 MiB in that closed-panel run. This includes post-launch work and is near the timer's measurement resolution; it is not a claim of zero resource use.
+
 Core comparisons used approximately 840 visible processes under heavy system load. Core RSS increased from 11.67 to 13.00 MiB because of the small snapshot caches; the memory reduction in the full app comes from the interface changes. These short observations are workload-dependent and compare separate launches. Native accessibility inspection itself temporarily raises CPU and memory, so it was excluded from the timed full-app CPU intervals. Physical footprint peaks were 156.8 MB before and 56.1 MB after. The final subsequent source adjustment changed singular/plural display text only.
 
 ## Repeating the checks
@@ -85,4 +87,6 @@ The native automation tool cannot attach to an accessory-only app or its popover
 
 A Developer ID signed and notarized build 1 was installed in Applications with a feed pointing to the public validation prerelease. Sparkle downloaded build 3 from GitHub, verified its EdDSA signature, replaced the app, and relaunched it. The installed `CFBundleVersion` became 3, strict code-signature validation passed, and its executable SHA-256 matched the notarized release artifact exactly. Sparkle's system log records signature acceptance and archive extraction at 12:54:25 Central on October 9, 2026.
 
-The stable 0.1.1 build 4 adds only the launch-at-login registration control correction and canonical packaging version defaults. Its installed build 3→4 update check follows publication of the stable production feed.
+The stable 0.1.1 build 4 adds only the launch-at-login registration control correction and canonical packaging version defaults. The production `releases/latest/download/appcast.xml` endpoint was fetched and compared byte-for-byte with the generated feed. Its version, download URL, archive length, and Ed25519 signature were independently verified using the embedded public key.
+
+The installed build 3 then opened Sparkle's native Software Update window, identified 0.1.1 as newer than 0.1.0, downloaded the archive, and displayed Install and Relaunch. After confirmation, the installed app relaunched normally with no validation flags. Its version became 0.1.1/build 4, its executable SHA-256 matched the notarized release artifact, strict signature verification passed, its stapled ticket validated, and Gatekeeper accepted it as Notarized Developer ID. The GitHub release is public, not a draft, and not a prerelease. Update scheduling over a full day and an actual logout/login cycle remain outside these checks.
