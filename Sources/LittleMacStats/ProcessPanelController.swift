@@ -263,7 +263,7 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         updateButton.setContentHuggingPriority(.defaultLow, for: .horizontal)
         let about = NSButton(title: "About", target: self, action: #selector(showAbout(_:)))
         let quit = NSButton(title: "Quit", target: NSApp, action: #selector(NSApplication.terminate(_:)))
-        quit.setAccessibilityLabel("Quit Mac Stats")
+        quit.setAccessibilityLabel("Quit Little Mac Stats")
         quit.keyEquivalent = "q"
         quit.keyEquivalentModifierMask = .command
         for button in [settings, updateButton, about, quit] {

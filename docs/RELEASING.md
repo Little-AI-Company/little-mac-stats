@@ -1,6 +1,10 @@
-# Releasing Mac Stats
+# Releasing Little Mac Stats
 
-The current version is 0.2.0, build 6, as recorded in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.parkerrex.mac-stats`. Developer ID signing, Xcode archive upload, notarized export, stapling, and Gatekeeper acceptance have been validated. Earlier installed updates from build 1 to 3 and build 3 to 4 passed, including download, installation, relaunch, executable-hash comparison, and signature/ticket checks. See [validation](VALIDATION.md) for the current release evidence and remaining limits.
+The current version is 0.2.0, build 6, as recorded in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.thelittleworker.little-mac-stats`.
+
+Releases through 0.2.0 shipped as Mac Stats with the bundle identifier `com.parkerrex.mac-stats`, the Sparkle key account of the same name, and the `mac-stats` Homebrew cask. The rename to Little Mac Stats is a clean break: those builds do not update to Little Mac Stats, and the release evidence below was recorded on them. The first Little Mac Stats release starts a new update chain and must repeat the signing, notarization, update, and Homebrew checks.
+
+For the Mac Stats builds, Developer ID signing, Xcode archive upload, notarized export, stapling, and Gatekeeper acceptance have been validated. Earlier installed updates from build 1 to 3 and build 3 to 4 passed, including download, installation, relaunch, executable-hash comparison, and signature/ticket checks. See [validation](VALIDATION.md) for the current release evidence and remaining limits.
 
 ## Local development package
 
@@ -8,10 +12,10 @@ The current version is 0.2.0, build 6, as recorded in `Resources/Info.plist`. Pa
 swift test
 swift build -c release
 scripts/package_app.sh
-open "dist/Mac Stats.app"
+open "dist/Little Mac Stats.app"
 ```
 
-Packaging uses the checked-in version defaults, lockfile, icon, and plist. It embeds the pinned Sparkle binary with `ditto` to preserve framework symlinks and permissions. It signs inner helpers before the framework and the app, then verifies all signatures. With the current defaults, the result is `dist/Mac Stats.app` and `dist/Mac-Stats-0.2.0.zip`. Existing files with those names in the output directory are replaced. This is a repeatable build procedure; byte-for-byte reproducibility is not promised because toolchains and signing timestamps can differ.
+Packaging uses the checked-in version defaults, lockfile, icon, and plist. It embeds the pinned Sparkle binary with `ditto` to preserve framework symlinks and permissions. It signs inner helpers before the framework and the app, then verifies all signatures. With the current defaults, the result is `dist/Little Mac Stats.app` and `dist/Little-Mac-Stats-0.2.0.zip`. Existing files with those names in the output directory are replaced. This is a repeatable build procedure; byte-for-byte reproducibility is not promised because toolchains and signing timestamps can differ.
 
 Ad hoc signing is the default and does not enable hardened runtime. This allows the embedded framework to load locally without Library Validation rejecting its signature. To use an existing development certificate instead:
 
@@ -41,7 +45,7 @@ The update feed and public key must be supplied together. They are embedded in t
 
 Before publishing a binary, obtain a Developer ID Application signing identity, including its private key, and access to Apple notarization. Use the existing Xcode account workflow below, or save separate CLI credentials with `xcrun notarytool store-credentials`. Credentials stay in the Keychain. Never commit certificates, private keys, API keys, app-specific passwords, or exported signing files.
 
-Mac Stats uses Sparkle's Keychain account `com.parkerrex.mac-stats` for its update-signing key. The resolved package includes tools under `.build/artifacts/sparkle/Sparkle/bin/`. Read the existing public key with `generate_keys --account com.parkerrex.mac-stats -p`; do not generate a replacement for an established release. The production feed is `https://github.com/ParkerRex/mac-stats/releases/latest/download/appcast.xml`. Update archives are GitHub Release assets. The Apple certificate and Sparkle key are separate identities: a second release Mac needs both existing private keys. Keep backups outside the repository; import the existing keys instead of rotating them accidentally.
+Little Mac Stats uses Sparkle's Keychain account `com.thelittleworker.little-mac-stats` for its update-signing key. That key was generated on October 20, 2026, for the rename; the Mac Stats key under `com.parkerrex.mac-stats` signs only the old builds. Back up the new private key with `generate_keys --account com.thelittleworker.little-mac-stats -x` to a file kept outside the repository. The resolved package includes tools under `.build/artifacts/sparkle/Sparkle/bin/`. Read the existing public key with `generate_keys --account com.thelittleworker.little-mac-stats -p`; do not generate a replacement for an established release. The production feed is `https://github.com/ParkerRex/little-mac-stats/releases/latest/download/appcast.xml`. Update archives are GitHub Release assets. The Apple certificate and Sparkle key are separate identities: a second release Mac needs both existing private keys. Keep backups outside the repository; import the existing keys instead of rotating them accidentally.
 
 Increase `BUILD_NUMBER` for every update. Keep the bundle identifier and signing team stable. The settings below are examples with placeholders; they do not identify a configured release service:
 
@@ -49,8 +53,8 @@ Increase `BUILD_NUMBER` for every update. Keep the bundle identifier and signing
 swift test
 VERSION=0.1.1 BUILD_NUMBER=4 UNIVERSAL=1 DISTRIBUTION=1 \
 SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
-NOTARY_PROFILE='MacStatsNotary' \
-UPDATE_FEED_URL='https://your-update-host.example/mac-stats/appcast.xml' \
+NOTARY_PROFILE='LittleMacStatsNotary' \
+UPDATE_FEED_URL='https://your-update-host.example/little-mac-stats/appcast.xml' \
 UPDATE_PUBLIC_KEY='PUBLIC_KEY_FROM_GENERATE_KEYS' \
 scripts/package_app.sh
 ```
@@ -63,9 +67,9 @@ If Xcode is already signed in to the release team, its distribution workflow can
 
 ```sh
 scripts/create_xcode_archive.sh \
-  'dist/signed-development/Mac Stats.app' \
-  'dist/Mac Stats.xcarchive'
-open 'dist/Mac Stats.xcarchive'
+  'dist/signed-development/Little Mac Stats.app' \
+  'dist/Little Mac Stats.xcarchive'
+open 'dist/Little Mac Stats.xcarchive'
 ```
 
 The script copies the app into `Products/Applications` with `ditto`, preserves its signatures and framework symlinks, and records its bundle version, identifier, and available signer/team metadata. It refuses to replace an existing archive. It does not build, sign, upload, notarize, publish, or collect debug symbols. Keep the original build's debug symbols separately.
@@ -85,7 +89,7 @@ plutil -insert signingStyle -string manual build/XcodeExportOptions.plist
 plutil -insert signingCertificate -string "$RELEASE_SIGNING_CERTIFICATE" build/XcodeExportOptions.plist
 plutil -insert teamID -string "$RELEASE_TEAM_ID" build/XcodeExportOptions.plist
 xcodebuild -exportArchive \
-  -archivePath 'dist/Mac Stats.xcarchive' \
+  -archivePath 'dist/Little Mac Stats.xcarchive' \
   -exportPath 'dist/xcode-export' \
   -exportOptionsPlist build/XcodeExportOptions.plist
 ```
@@ -94,7 +98,7 @@ Set `RELEASE_SIGNING_CERTIFICATE` to the certificate SHA-1 identifier from `secu
 
 ```sh
 xcodebuild -exportNotarizedApp \
-  -archivePath 'dist/Mac Stats.xcarchive' \
+  -archivePath 'dist/Little Mac Stats.xcarchive' \
   -exportPath 'dist/notarized'
 ```
 
@@ -106,8 +110,8 @@ Copy the notarized archive into a dedicated release archive directory, preservin
 
 ```sh
 .build/artifacts/sparkle/Sparkle/bin/generate_appcast \
-  --account com.parkerrex.mac-stats \
-  --download-url-prefix 'https://github.com/ParkerRex/mac-stats/releases/download/v0.1.1/' \
+  --account com.thelittleworker.little-mac-stats \
+  --download-url-prefix 'https://github.com/ParkerRex/little-mac-stats/releases/download/v0.1.1/' \
   --maximum-deltas 0 \
   /path/to/release-archives
 ```
@@ -122,16 +126,16 @@ Attach the notarized archive and generated appcast to a clearly marked GitHub pr
 
 ## Homebrew distribution
 
-The canonical cask is [`Casks/mac-stats.rb` in ParkerRex/homebrew-tap](https://github.com/ParkerRex/homebrew-tap/blob/main/Casks/mac-stats.rb). Users install it with `brew install --cask parkerrex/tap/mac-stats`. It downloads the same signed, notarized release archive as the direct GitHub download; no separate build or Homebrew account is needed.
+The canonical cask is [`Casks/little-mac-stats.rb` in ParkerRex/homebrew-tap](https://github.com/ParkerRex/homebrew-tap/blob/main/Casks/little-mac-stats.rb). Users install it with `brew install --cask parkerrex/tap/little-mac-stats`. It downloads the same signed, notarized release archive as the direct GitHub download; no separate build or Homebrew account is needed.
 
 After publishing each stable release:
 
 1. Download the public versioned archive and compute its SHA-256 with `shasum -a 256`. Verify it against the release checksum and inspect the extracted app with `codesign --verify --deep --strict`, `xcrun stapler validate`, and `spctl --assess --type execute`.
 2. Update `version` and `sha256` in the tap's cask. Preserve the versioned download URL, minimum macOS version, and `auto_updates true` while Sparkle updates are supported. Never use `sha256 :no_check` or disable quarantine.
-3. Run `brew style --cask parkerrex/tap/mac-stats`, `brew audit --cask --online parkerrex/tap/mac-stats`, and `brew livecheck --cask parkerrex/tap/mac-stats`. Test installation or upgrade against the actual public archive and record the result in [validation](VALIDATION.md).
+3. Run `brew style --cask parkerrex/tap/little-mac-stats`, `brew audit --cask --online parkerrex/tap/little-mac-stats`, and `brew livecheck --cask parkerrex/tap/little-mac-stats`. Test installation or upgrade against the actual public archive and record the result in [validation](VALIDATION.md).
 4. Review, commit, and push the tap change. Confirm the public cask has the intended version and checksum. `brew livecheck` reports available releases; it does not publish cask updates.
 
-The app's own updater remains available. For a Homebrew-managed upgrade, use `brew update` followed by `brew upgrade --cask --greedy parkerrex/tap/mac-stats`. The `--greedy` option includes casks with built-in updaters. Homebrew's installed version record does not track updates made through Sparkle.
+The app's own updater remains available. For a Homebrew-managed upgrade, use `brew update` followed by `brew upgrade --cask --greedy parkerrex/tap/little-mac-stats`. The `--greedy` option includes casks with built-in updaters. Homebrew's installed version record does not track updates made through Sparkle.
 
 ## References
 

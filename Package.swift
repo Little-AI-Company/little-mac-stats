@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "MacStats",
+    name: "LittleMacStats",
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "ProcessCore", targets: ["ProcessCore"]),
-        .executable(name: "MacStats", targets: ["MacStats"]),
+        .executable(name: "LittleMacStats", targets: ["LittleMacStats"]),
         .executable(name: "ProcessProbe", targets: ["ProcessProbe"]),
     ],
     dependencies: [
@@ -15,7 +15,7 @@ let package = Package(
     targets: [
         .target(name: "ProcessCore"),
         .executableTarget(
-            name: "MacStats",
+            name: "LittleMacStats",
             dependencies: ["ProcessCore", .product(name: "Sparkle", package: "Sparkle")],
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]
         ),

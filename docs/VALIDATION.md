@@ -1,5 +1,7 @@
 # Validation
 
+Release, update, and Homebrew evidence through 0.2.0 was recorded on builds named Mac Stats (`com.parkerrex.mac-stats`), before the rename to Little Mac Stats. Commands and paths in those records use the old names on purpose.
+
 ## Observable outcomes
 
 1. Launching the packaged app shows compact per-core blocks by default, or the saved percentage style, and no Dock icon. The panel accepts keyboard input and shows measured CPU after a sampling interval.
@@ -71,7 +73,7 @@ UNIVERSAL=1 scripts/package_app.sh
 
 The probe's termination modes only create and terminate their own disposable fixtures. They do not accept arbitrary target PIDs.
 
-The native automation tool cannot attach to an accessory-only app or its popover. For inspection, `dist/Mac Stats.app/Contents/MacOS/MacStats --show-window` displays the same live panel in a regular AppKit window. `--show-window --freeze-after-sample` takes two real samples and stops the timer so accessibility element identifiers remain stable. This mode clearly titles the window `Mac Stats Validation Snapshot`; it is used to inspect confirmation controls. Add `--dark-appearance` or `--high-contrast-appearance` with `--show-window` to inspect this app without changing system settings. Normal launches do not use these modes and remain menu-bar-only. Exit the validation instance before launching normally.
+The native automation tool cannot attach to an accessory-only app or its popover. For inspection, `dist/Little Mac Stats.app/Contents/MacOS/LittleMacStats --show-window` displays the same live panel in a regular AppKit window. `--show-window --freeze-after-sample` takes two real samples and stops the timer so accessibility element identifiers remain stable. This mode clearly titles the window `Little Mac Stats Validation Snapshot`; it is used to inspect confirmation controls. Add `--dark-appearance` or `--high-contrast-appearance` with `--show-window` to inspect this app without changing system settings. Normal launches do not use these modes and remain menu-bar-only. Exit the validation instance before launching normally.
 
 ## Remaining limits
 
