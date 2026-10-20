@@ -1,6 +1,6 @@
 # Application screenshots
 
-Captured from the running Mac Stats 0.2.0 app on October 9, 2026, using live CPU and process data. These are the unaltered JPEG files returned by the native screenshot tool. No generated interface images or mock readings were used.
+`cpu-overview.jpg` was captured from the installed Little Mac Stats 0.3.0 app on October 20, 2026, with `screencapture -l` on the app's window, in the system's dark appearance. `process-details.jpg` and `settings.jpg` were captured from Mac Stats 0.2.0 on October 9, 2026, before the rename, so their titles still read Mac Stats; the controls are unchanged. All three use live CPU and process data and are unaltered JPEG files. No generated interface images or mock readings were used.
 
 - `cpu-overview.jpg`: CPU history, application usage, display-style previews, and footer commands.
 - `process-details.jpg`: native search with the Codex group expanded.
