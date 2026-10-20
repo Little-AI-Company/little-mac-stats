@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Mac Stats</string>
+	<string>Little Mac Stats</string>
 	<key>CFBundleExecutable</key>
-	<string>MacStats</string>
+	<string>LittleMacStats</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.parkerrex.mac-stats</string>
+	<string>com.thelittleworker.little-mac-stats</string>
 	<key>CFBundleName</key>
-	<string>Mac Stats</string>
+	<string>Little Mac Stats</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

@@ -38,7 +38,7 @@ if [[ "$distribution" == 1 ]]; then
     fi
 fi
 
-build_arguments=(-c release --product MacStats --force-resolved-versions)
+build_arguments=(-c release --product LittleMacStats --force-resolved-versions)
 if [[ "${UNIVERSAL:-0}" == 1 ]]; then
     build_arguments+=(--arch arm64 --arch x86_64)
 fi
@@ -56,9 +56,9 @@ fi
 mkdir -p "$output_directory"
 temporary_directory="$(mktemp -d "$output_directory/.package.XXXXXX")"
 trap 'rm -rf "$temporary_directory"' EXIT
-application="$temporary_directory/Mac Stats.app"
+application="$temporary_directory/Little Mac Stats.app"
 mkdir -p "$application/Contents/MacOS" "$application/Contents/Frameworks" "$application/Contents/Resources"
-install -m 755 "$binary_directory/MacStats" "$application/Contents/MacOS/MacStats"
+install -m 755 "$binary_directory/LittleMacStats" "$application/Contents/MacOS/LittleMacStats"
 ditto "$framework_source" "$application/Contents/Frameworks/Sparkle.framework"
 cp Resources/Info.plist "$application/Contents/Info.plist"
 cp Resources/AppIcon.icns "$application/Contents/Resources/AppIcon.icns"
@@ -101,12 +101,12 @@ if [[ "$distribution" == 1 ]]; then
     spctl --assess --type execute --verbose=2 "$application"
 fi
 
-destination="$output_directory/Mac Stats.app"
+destination="$output_directory/Little Mac Stats.app"
 if [[ -e "$destination" ]]; then
     rm -rf "$destination"
 fi
 mv "$application" "$destination"
-archive="$output_directory/Mac-Stats-$version.zip"
+archive="$output_directory/Little-Mac-Stats-$version.zip"
 ditto -c -k --keepParent "$destination" "$archive"
 printf 'Packaged %s\nArchive: %s\n' "$destination" "$archive"
 if [[ "$distribution" == 0 ]]; then

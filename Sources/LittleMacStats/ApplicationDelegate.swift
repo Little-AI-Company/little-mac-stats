@@ -51,7 +51,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
         if CommandLine.arguments.contains("--show-window") {
             let window = NSWindow(contentRect: NSRect(origin: .zero, size: panelSize),
                                   styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-            window.title = "Mac Stats"
+            window.title = "Little Mac Stats"
             window.contentViewController = panel
             window.setContentSize(panelSize)
             window.contentMinSize = panelSize
@@ -75,7 +75,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
             button.target = self
             button.action = #selector(togglePanel(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.setAccessibilityLabel("Mac Stats")
+            button.setAccessibilityLabel("Little Mac Stats")
             button.setAccessibilityHelp("Open CPU usage and running processes")
         }
         statusItem = item
@@ -135,7 +135,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
     private func showValidationWindow() {
         hasProcessBaseline = false
         panel?.beginMeasuring()
-        validationWindow?.title = "Mac Stats"
+        validationWindow?.title = "Little Mac Stats"
         validationWindow?.deminiaturize(nil)
         validationWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -178,7 +178,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
                     // Windowed validation may pause after two real samples for stable native control inspection.
                     if detailed && processesReady && CommandLine.arguments.contains("--freeze-after-sample"),
                        let window = self.validationWindow {
-                        window.title = "Mac Stats Validation Snapshot"
+                        window.title = "Little Mac Stats Validation Snapshot"
                         return
                     }
                 } catch {
@@ -304,19 +304,19 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
         renderedCoreReadingsAvailable = coreReadingsAvailable
         switch status {
         case .measuring:
-            button.toolTip = "Mac Stats: measuring CPU usage"
+            button.toolTip = "Little Mac Stats: measuring CPU usage"
             button.setAccessibilityValue("Measuring CPU")
         case .sampled(let percent):
             let coreDescription = displayStyle == .coreBlocks
                 ? (coreReadingsAvailable ? "\nOne block per CPU core. Darker blocks indicate more activity." : "\nPer-core usage is unavailable.")
                 : ""
-            button.toolTip = "Mac Stats: \(percent)% of total CPU capacity\(coreDescription)"
+            button.toolTip = "Little Mac Stats: \(percent)% of total CPU capacity\(coreDescription)"
             button.setAccessibilityValue("\(percent) percent CPU")
         case .unavailable:
-            button.toolTip = "Mac Stats: CPU sampling unavailable"
+            button.toolTip = "Little Mac Stats: CPU sampling unavailable"
             button.setAccessibilityValue("CPU sampling unavailable")
         case .paused:
-            button.toolTip = "Mac Stats: sampling paused during sleep"
+            button.toolTip = "Little Mac Stats: sampling paused during sleep"
             button.setAccessibilityValue("Sampling paused")
         }
     }
@@ -346,7 +346,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
     }
 
     private func makeApplicationMenu(includeDisplayStyles: Bool = false) -> NSMenu {
-        let applicationMenu = NSMenu(title: "Mac Stats")
+        let applicationMenu = NSMenu(title: "Little Mac Stats")
         if includeDisplayStyles {
             for style in StatusDisplayStyle.allCases {
                 let item = NSMenuItem(title: style.title, action: #selector(selectDisplayStyle(_:)), keyEquivalent: "")
@@ -364,11 +364,11 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
         let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates(_:)), keyEquivalent: "")
         updateItem.target = self
         applicationMenu.addItem(updateItem)
-        let aboutItem = NSMenuItem(title: "About Mac Stats", action: #selector(showAbout(_:)), keyEquivalent: "")
+        let aboutItem = NSMenuItem(title: "About Little Mac Stats", action: #selector(showAbout(_:)), keyEquivalent: "")
         aboutItem.target = self
         applicationMenu.addItem(aboutItem)
         applicationMenu.addItem(.separator())
-        applicationMenu.addItem(NSMenuItem(title: "Quit Mac Stats", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        applicationMenu.addItem(NSMenuItem(title: "Quit Little Mac Stats", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         return applicationMenu
     }
 }

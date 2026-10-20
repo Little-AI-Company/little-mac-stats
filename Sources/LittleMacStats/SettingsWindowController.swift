@@ -16,7 +16,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         self.updates = updates
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 420, height: 300),
                               styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "Mac Stats Settings"
+        window.title = "Little Mac Stats Settings"
         window.isReleasedWhenClosed = false
         window.contentMinSize = NSSize(width: 420, height: 300)
         super.init(window: window)
@@ -107,10 +107,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         loginButton.state = status == .enabled || status == .requiresApproval ? .on : .off
         loginButton.isEnabled = true
         switch status {
-        case .enabled: loginStatus.stringValue = "Mac Stats will start when you log in."
+        case .enabled: loginStatus.stringValue = "Little Mac Stats will start when you log in."
         case .requiresApproval: loginStatus.stringValue = "Launch at login needs approval in System Settings → General → Login Items."
         case .notFound: loginStatus.stringValue = "Launch at login is not registered. Enable it to set it up."
-        case .notRegistered: loginStatus.stringValue = "Mac Stats will start only when you open it."
+        case .notRegistered: loginStatus.stringValue = "Little Mac Stats will start only when you open it."
         @unknown default: loginStatus.stringValue = "Launch at login status is unavailable."
         }
         fitWindowToControls()

@@ -1,4 +1,4 @@
-# Mac Stats strategy
+# Little Mac Stats strategy
 
 ## Purpose
 
@@ -21,13 +21,13 @@ Use Swift Package Manager, Swift 6, macOS 14 or later, AppKit for status item/po
 
 Keep process sampling off the main thread. Sample system and per-core CPU every two seconds while closed, and processes only while the popover is open. Free the kernel's per-core statistics allocation after every read. Open-panel sampling runs once per second. Stop on sleep and reset baselines after wake. Render only on new samples, with no display-linked animation; redraw the core icon only when its shade levels change.
 
-Three modules: `ProcessCore` for sampling, classification, and safe termination; `MacStats` for the native app; `ProcessProbe` for headless integration evidence. Prefer value snapshots across concurrency boundaries.
+Three modules: `ProcessCore` for sampling, classification, and safe termination; `LittleMacStats` for the native app; `ProcessProbe` for headless integration evidence. Prefer value snapshots across concurrency boundaries.
 
 ## Executor integration contract
 
 The process executor publishes the exact API promptly. Expected concepts: a Sendable snapshot with whole-machine CPU percent and process groups; each group includes a stable ID, display name, normalized CPU percent, and processes; each process includes PID, parent PID, UID, start identity, display name, executable path, CPU percent, and termination eligibility. A sampler supports sampling with/without process detail. A termination service revalidates identity and UID immediately before a signal. UI handles confirmation; core handles enforcement and errors.
 
-The release executor owns `UpdateController` as an `@MainActor` type. Coordinate its API with the UI executor. Default repository and bundle identity: `ParkerRex/mac-stats`, `com.parkerrex.mac-stats`. App display name: Mac Stats. Initial version: 0.1.0.
+The release executor owns `UpdateController` as an `@MainActor` type. Coordinate its API with the UI executor. Repository and bundle identity: `ParkerRex/little-mac-stats`, `com.thelittleworker.little-mac-stats`. App display name: Little Mac Stats. Releases through 0.2.0 shipped as Mac Stats (`com.parkerrex.mac-stats`).
 
 ## Ghostty lessons applied
 

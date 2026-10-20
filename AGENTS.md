@@ -1,11 +1,11 @@
-# Mac Stats
+# Little Mac Stats
 
 Build a small native macOS menu bar utility that shows CPU usage by app and lets the user stop eligible processes. Keep the product simple, fast, and understandable without developer knowledge.
 
 ## Repository map
 
 - `Package.swift`: Swift 6, macOS 14 minimum, Swift Package Manager. Sparkle is the only external dependency.
-- `Sources/MacStats/`: AppKit status item, popover, settings, and updates.
+- `Sources/LittleMacStats/`: AppKit status item, popover, settings, and updates.
 - `Sources/ProcessCore/`: native sampling, CPU calculations, attribution, and guarded termination.
 - `Sources/ProcessProbe/`: command-line integration checks and measurements.
 - `Tests/ProcessCoreTests/`: focused Swift Testing behavior tests.
@@ -39,10 +39,10 @@ Use the SwiftPM targets already in this repository. Do not create an Xcode proje
 swift build
 swift test
 scripts/package_app.sh
-open -n "dist/Mac Stats.app"
+open -n "dist/Little Mac Stats.app"
 ```
 
-These are available commands, not a requirement to run all four for every edit. Packaging builds the app in Release mode, embeds Sparkle, and signs ad hoc by default. Launch the GUI through the packaged `.app`; a raw `swift run MacStats` is not a substitute for bundle validation. Quit the previous development instance before comparing builds.
+These are available commands, not a requirement to run all four for every edit. Packaging builds the app in Release mode, embeds Sparkle, and signs ad hoc by default. Launch the GUI through the packaged `.app`; a raw `swift run LittleMacStats` is not a substitute for bundle validation. Quit the previous development instance before comparing builds.
 
 For CLI checks, use the existing probe:
 
