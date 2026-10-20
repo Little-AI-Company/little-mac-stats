@@ -1,6 +1,6 @@
 # Releasing Little Mac Stats
 
-The current version is 0.2.0, build 6, as recorded in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.thelittleworker.little-mac-stats`.
+The current version is 0.3.0, build 7, as recorded in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.thelittleworker.little-mac-stats`.
 
 Releases through 0.2.0 shipped as Mac Stats with the bundle identifier `com.parkerrex.mac-stats`, the Sparkle key account of the same name, and the `mac-stats` Homebrew cask. The rename to Little Mac Stats is a clean break: those builds do not update to Little Mac Stats, and the release evidence below was recorded on them. The first Little Mac Stats release starts a new update chain and must repeat the signing, notarization, update, and Homebrew checks.
 
@@ -15,7 +15,7 @@ scripts/package_app.sh
 open "dist/Little Mac Stats.app"
 ```
 
-Packaging uses the checked-in version defaults, lockfile, icon, and plist. It embeds the pinned Sparkle binary with `ditto` to preserve framework symlinks and permissions. It signs inner helpers before the framework and the app, then verifies all signatures. With the current defaults, the result is `dist/Little Mac Stats.app` and `dist/Little-Mac-Stats-0.2.0.zip`. Existing files with those names in the output directory are replaced. This is a repeatable build procedure; byte-for-byte reproducibility is not promised because toolchains and signing timestamps can differ.
+Packaging uses the checked-in version defaults, lockfile, icon, and plist. It embeds the pinned Sparkle binary with `ditto` to preserve framework symlinks and permissions. It signs inner helpers before the framework and the app, then verifies all signatures. With the current defaults, the result is `dist/Little Mac Stats.app` and `dist/Little-Mac-Stats-0.3.0.zip`. Existing files with those names in the output directory are replaced. This is a repeatable build procedure; byte-for-byte reproducibility is not promised because toolchains and signing timestamps can differ.
 
 Ad hoc signing is the default and does not enable hardened runtime. This allows the embedded framework to load locally without Library Validation rejecting its signature. To use an existing development certificate instead:
 
@@ -29,8 +29,8 @@ The packaging script accepts these environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VERSION` | `CFBundleShortVersionString` from `Resources/Info.plist`, currently `0.2.0` | Numeric marketing version, three components |
-| `BUILD_NUMBER` | `CFBundleVersion` from `Resources/Info.plist`, currently `6` | Positive integer, increased for each distributed build |
+| `VERSION` | `CFBundleShortVersionString` from `Resources/Info.plist`, currently `0.3.0` | Numeric marketing version, three components |
+| `BUILD_NUMBER` | `CFBundleVersion` from `Resources/Info.plist`, currently `7` | Positive integer, increased for each distributed build |
 | `UNIVERSAL` | `0` | `1` builds arm64 and x86_64; otherwise builds for the current machine |
 | `OUTPUT_DIRECTORY` | `dist` in the repository | Output directory |
 | `SIGNING_IDENTITY` | `-` | Ad hoc, Apple Development, or Developer ID identity |
