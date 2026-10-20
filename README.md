@@ -25,7 +25,7 @@ Requires macOS 14 or later. Install through the [Homebrew tap](https://github.co
 brew install --cask parkerrex/tap/little-mac-stats
 ```
 
-Open **Little Mac Stats** from Applications. Until the first Little Mac Stats release, the cask installs 0.2.0, which still opens as **Mac Stats**. If the same release is already installed manually, use `brew install --cask --adopt parkerrex/tap/little-mac-stats` to let Homebrew manage the identical app. Use **Check for Updates** in the app, or run `brew update` followed by `brew upgrade --cask --greedy parkerrex/tap/little-mac-stats`.
+Open **Little Mac Stats** from Applications. If the same release is already installed manually, use `brew install --cask --adopt parkerrex/tap/little-mac-stats` to let Homebrew manage the identical app. Use **Check for Updates** in the app, or run `brew update` followed by `brew upgrade --cask --greedy parkerrex/tap/little-mac-stats`.
 
 Signed, notarized downloads are also available through [GitHub Releases](https://github.com/ParkerRex/little-mac-stats/releases). Unzip the app, move it to Applications, and open it. Both installation methods use the same release archive, which supports Apple silicon and Intel; runtime validation was performed on Apple silicon with macOS 27.0.1. See [validation](docs/VALIDATION.md) for measured performance and remaining limits.
 

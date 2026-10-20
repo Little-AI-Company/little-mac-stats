@@ -2,7 +2,7 @@
 
 The current version is 0.3.0, build 7, as recorded in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.thelittleworker.little-mac-stats`.
 
-Releases through 0.2.0 shipped as Mac Stats with the bundle identifier `com.parkerrex.mac-stats`, the Sparkle key account of the same name, and the `mac-stats` Homebrew cask. The rename to Little Mac Stats is a clean break: those builds do not update to Little Mac Stats, and the release evidence below was recorded on them. The first Little Mac Stats release starts a new update chain and must repeat the signing, notarization, update, and Homebrew checks.
+Releases through 0.2.0 shipped as Mac Stats with the bundle identifier `com.parkerrex.mac-stats`, the Sparkle key account of the same name, and the `mac-stats` Homebrew cask. The rename to Little Mac Stats is a clean break: those builds do not update to Little Mac Stats, and the release evidence below was recorded on them. Little Mac Stats 0.3.0 starts a new update chain. Its signing, notarization, appcast, and Homebrew checks are recorded in [validation](VALIDATION.md); an installed update from one Little Mac Stats build to the next has not been exercised yet.
 
 For the Mac Stats builds, Developer ID signing, Xcode archive upload, notarized export, stapling, and Gatekeeper acceptance have been validated. Earlier installed updates from build 1 to 3 and build 3 to 4 passed, including download, installation, relaunch, executable-hash comparison, and signature/ticket checks. See [validation](VALIDATION.md) for the current release evidence and remaining limits.
 

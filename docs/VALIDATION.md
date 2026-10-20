@@ -120,3 +120,18 @@ On October 9, 2026, the public [ParkerRex/homebrew-tap](https://github.com/Parke
 - `open '/Applications/Mac Stats.app'`: succeeded. `pgrep -x MacStats` and inspection of that PID confirmed the app was running from `/Applications` with no validation flags.
 
 This work changed installation metadata and documentation, so no Swift build or unit tests were repeated. Homebrew upgrade, uninstall, and `--adopt` were documented but not exercised. Intel execution, macOS 14 execution, and a new visual inspection of the menu bar were not performed. The existing release and appcast were unchanged.
+
+## Little Mac Stats 0.3.0 release
+
+On October 20, 2026, 0.3.0 build 7 was released as the first build named Little Mac Stats, with bundle identifier `com.thelittleworker.little-mac-stats`, from commit `f4c4170`. Checks ran on Apple silicon with macOS 27.0.1, Xcode 27.1 (27A9275), and Homebrew 7.0.9-129-g19fe946.
+
+- `swift test`: 12 tests passed. `swift build -c release`: complete.
+- `UNIVERSAL=1` packaging with the Developer ID Application identity embedded the production feed URL and the new Ed25519 public key `2APrfWztckb/VheElDHKCRadqb8+293SyIDq8lMXCS8=`. `lipo -archs` reported `x86_64 arm64`.
+- `scripts/create_xcode_archive.sh`, then `xcodebuild -exportArchive` with `destination=upload` through the signed-in Xcode account, uploaded the app. `xcodebuild -exportNotarizedApp` succeeded once Apple accepted it.
+- On the notarized export: `codesign --verify --deep --strict` passed, `xcrun stapler validate` passed, and `spctl --assess --type execute` reported `accepted`, `source=Notarized Developer ID`.
+- `generate_appcast --account com.thelittleworker.little-mac-stats` signed the archive. The public `releases/latest/download/appcast.xml` served 0.3.0 with the v0.3.0 download URL and length 2538111.
+- The public `Little-Mac-Stats-0.3.0.zip` matched the local SHA-256 `1d45f5ef8478d00c730c558e1524ff21525ac242c7b91450bcc8d3bbe232cd27`; the extracted app passed `spctl` and stapler validation.
+- With the public tap at commit `8eb40a1`: `brew style --cask parkerrex/tap/little-mac-stats` found no offenses, `brew audit --cask --online` passed, and `brew livecheck` reported `0.3.0 ==> 0.3.0`.
+- On a Mac with the `mac-stats` 0.2.0 cask installed, `brew install --cask parkerrex/tap/little-mac-stats` followed `cask_renames.json`, removed `Mac Stats.app`, and installed `/Applications/Little Mac Stats.app` 0.3.0. The installed app passed `codesign`, stapler, and `spctl` checks, launched from `/Applications`, and showed the per-core blocks in the menu bar.
+
+Not exercised: a Sparkle update from one Little Mac Stats build to another (no earlier build exists under this identity), Intel execution, and macOS versions before 27. Mac Stats 0.2.0 installs that check for updates are expected to find 0.3.0 at the redirected feed and reject it, because 0.3.0 is signed with the new key; this intended clean break was not exercised.
