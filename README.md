@@ -54,7 +54,7 @@ scripts/package_app.sh
 open "dist/Little Mac Stats.app"
 ```
 
-The script builds the release executable, embeds Sparkle, adds the icon and app metadata, and signs the bundle ad hoc by default. It also produces `dist/Little-Mac-Stats-0.2.0.zip`, a local development archive. Version defaults come from `Resources/Info.plist`. The app runs only in the menu bar. Use Settings to enable launch at login. For local installation, copy `dist/Little Mac Stats.app` into `/Applications`, then open that copy. Local ad hoc signing does not provide the trust of a Developer ID signed and notarized release.
+The script builds the release executable, embeds Sparkle, adds the icon and app metadata, and signs the bundle ad hoc by default. It also produces `dist/Little-Mac-Stats-0.3.0.zip`, a local development archive. Version defaults come from `Resources/Info.plist`. The app runs only in the menu bar. Use Settings to enable launch at login. For local installation, copy `dist/Little Mac Stats.app` into `/Applications`, then open that copy. Local ad hoc signing does not provide the trust of a Developer ID signed and notarized release.
 
 To build for both Apple silicon and Intel:
 
