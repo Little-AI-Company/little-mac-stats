@@ -14,19 +14,41 @@ Art was generated with Codex CLI image generation on October 20, 2026, using Lit
 
 ## Files
 
+In use by the repository:
+
 | File | Size | Use |
 | --- | --- | --- |
-| `icon.png` | 1024x1024 | Square icon source, edge to edge |
-| `icon-macos.png` | 1024x1024 | Rounded macOS icon shape on a transparent canvas; source for `Resources/AppIcon.icns` |
-| `icon-macos-small.png` | 1024x1024 | Simplified head-only art used for icon renditions of 32 pixels or fewer |
 | `banner.png` | 1536x768 | README banner |
-| `social-preview.png` | 1280x640 | GitHub repository social preview |
-| `og-image.png` | 1200x630 | Open Graph and link-sharing card |
+| `icon-macos.png` | 1024x1024 | Rounded macOS icon on a transparent canvas; source for `Resources/AppIcon.icns` |
+| `icon-macos-small.png` | 1024x1024 | Simplified head-only art for icon renditions of 32 pixels or fewer |
+
+`branding/masters/` holds the full-quality originals. Start any new size or crop from these.
+
+| File | Size | Content |
+| --- | --- | --- |
+| `icon.png` | 1024x1024 | Square app icon, edge to edge |
+| `icon-small.png` | 1024x1024 | Head-only icon for small sizes |
+| `icon-dark.png` | 1024x1024 | Dark icon variant |
 | `avatar.png` | 1024x1024 | Profile picture; safe for a circular crop |
-| `wordmark.png` | 1536x1024 | Wordmark with the head mark |
-| `branding/explorations/icon-dark.png` | 1024x1024 | Dark icon exploration, not in use |
-| `branding/explorations/icon-small.png` | 1024x1024 | Square source for `icon-macos-small.png` |
-| `branding/explorations/concepts/` | | The four characters considered: chip, meter (chosen), fan, and stopwatch |
+| `banner.png` | 1536x768 | Wordmark, tagline, and walking character |
+| `social-card.png` | 1536x1024 | Wordmark, tagline, "A free menu bar app for macOS.", and waving character; content sits in the middle 1536x800 band |
+| `wordmark.png` | 1536x1024 | Head mark and wordmark |
+
+`branding/exports/` holds ready-to-upload sizes made from the masters.
+
+| File | Size | Use |
+| --- | --- | --- |
+| `app-icon/icon-{16,32,64,128,256,512,1024}.png` | as named | Rounded macOS icon; 16 and 32 use the head-only art |
+| `app-icon/icon-dark-1024.png` | 1024x1024 | Rounded dark variant |
+| `social/github-social-preview-1280x640.png` | 1280x640 | GitHub repository social preview (Settings > General) |
+| `social/open-graph-1200x630.png` | 1200x630 | Open Graph and link-sharing card |
+| `social/x-header-1500x500.png` | 1500x500 | X profile header |
+| `avatar/avatar-{400,800}.png` | as named | Profile pictures |
+| `web/favicon-{32,64}.png` | as named | Website favicon, head-only art |
+| `web/apple-touch-icon-180.png` | 180x180 | Website home screen icon; iOS rounds the corners |
+| `wordmark/wordmark.png` | 1297x300 | Wordmark trimmed with an even cream margin |
+
+`branding/explorations/concepts/` keeps the four characters considered: chip, meter (chosen), fan, and stopwatch.
 
 Regenerate the app icon after changing `icon-macos.png` or `icon-macos-small.png`:
 
