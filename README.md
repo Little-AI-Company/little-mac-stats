@@ -3,7 +3,7 @@
 
 I made this to see which AI bot is eating my CPU without digging through traces or dealing with bloated, slow stats apps.
 
-If you want to contribute, feel free to [open a PR](https://github.com/ParkerRex/little-mac-stats/compare) and read the [contribution guide](CONTRIBUTING.md). Please don't throw slop grenades at me.
+If you want to contribute, read the [contribution guide](CONTRIBUTING.md), then open an issue or a pull request. Changes land on `main` as single commits, so a maintainer lands yours with you credited. Please don't throw slop grenades at me.
 
 **Everything below here is AI slop.**
 

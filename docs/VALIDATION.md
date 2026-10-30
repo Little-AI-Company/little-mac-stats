@@ -1,3 +1,11 @@
+---
+title: "Validation"
+summary: "Measured evidence and known limits: CPU accuracy, sampling cost, termination guards, signing, updates and Homebrew."
+read_when:
+  - "You change sampling, attribution, termination, performance, packaging or updates and must record or compare evidence."
+  - "You need to know what has and has not been verified."
+---
+
 # Validation
 
 Release, update, and Homebrew evidence through 0.2.0 was recorded on builds named Mac Stats (`com.parkerrex.mac-stats`), before the rename to Little Mac Stats. Commands and paths in those records use the old names on purpose.

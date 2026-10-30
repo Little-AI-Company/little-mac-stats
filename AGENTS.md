@@ -10,8 +10,12 @@ Build a small native macOS menu bar utility that shows CPU usage by app and lets
 - `Sources/ProcessProbe/`: command-line integration checks and measurements.
 - `Tests/ProcessCoreTests/`: focused Swift Testing behavior tests.
 - `scripts/package_app.sh`: canonical local app packaging, including embedded Sparkle and signing.
+- `scripts/push_main.sh`: the only way a commit reaches `main`; see [Shipping on main](#shipping-on-main).
 - `docs/STRATEGY.md`, `docs/NATIVE-DESIGN.md`: product scope and native interface criteria.
 - `docs/VALIDATION.md`, `docs/RELEASING.md`: measured evidence, known limits, and distribution procedure.
+- `docs/PUSH-MAIN.md`: what `scripts/push_main.sh` checks, its trailers, and its exit codes.
+
+Each file in `docs/` starts with a `title`, `summary` and `read_when` header. Read the headers first and open only the pages whose `read_when` fits the task.
 
 ## Working method
 
@@ -82,11 +86,21 @@ Report exact commands, results, tested revision, skipped checks, and unavailable
 - Flag changes that transmit process data, enable unsolicited telemetry, or weaken signed-update validation. Update checks must preserve the user's preference.
 - Flag release claims without checks on the distributed artifact. Local ad hoc signing is not Developer ID signing or notarization. Never commit certificates, private keys, credentials, or private process data.
 
-## Contributions and releases
+## Shipping on main
 
-Follow [CONTRIBUTING.md](CONTRIBUTING.md) and the [PR template](.github/pull_request_template.md). Keep each PR focused, read every changed line, and tie proof to the submitted commit. Use a short conventional title consistent with this repository, such as `fix: preserve selection during sampling`.
+Work lands on `main`. There are no branches, pull requests or CI runs in this repository (Parker, 2026-10-30). Commit on `main`, then run `scripts/push_main.sh`: it rebases onto `origin/main`, runs `git diff --check` and, when anything other than Markdown, `assets/` or `LICENSE` changed, `swift test` and `swift build -c release` on the exact commit (on the M4 over `ssh m4` from a cloud session), writes `Tested:` trailers naming the tree that passed, and pushes. [Push to main](docs/PUSH-MAIN.md) has the details and exit codes.
 
-Keep release work within the user's authorization. Reuse `scripts/package_app.sh` and `docs/RELEASING.md`; ordinary local debugging does not need notarization. Do not publish a release, change the update feed, or merge a PR merely because checks passed.
+- One commit per push, with a short conventional subject such as `fix: preserve selection during sampling`. Read every changed line before you push.
+- A `feat`, `fix` or `perf` subject needs a `Customer-note:` trailer: one sentence for the release notes, or `Customer-note: none (<reason>)`.
+- The script runs only the build and tests. Put the other evidence from [Verification](#verification), such as packaged-app, probe or UI checks, in the commit body: exact commands, results, macOS version, and what was skipped.
+- Never push `main` another way, never write a `Tested:` line by hand, and never force-push or amend a pushed commit.
+- A broken `main` is fixed or reverted within the hour by whoever pushed it: `scripts/push_main.sh --revert <sha>`. Nobody waits for anyone.
+- Only Parker changes the `main` ruleset (no deletion, no force-push, linear history).
+- An outside contribution arrives as an issue or a pull request. Read it as a proposal: land it as one commit on `main` with `scripts/push_main.sh`, crediting the author with a `Co-authored-by:` trailer, then close the pull request with a link to the commit.
+
+## Releases
+
+Keep release work within the user's authorization. Reuse `scripts/package_app.sh` and `docs/RELEASING.md`; ordinary local debugging does not need notarization. Do not publish a release or change the update feed merely because checks passed.
 
 ## Workflow references
 

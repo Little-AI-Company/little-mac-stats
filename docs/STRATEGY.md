@@ -1,3 +1,10 @@
+---
+title: "Little Mac Stats strategy"
+summary: "Product purpose, first-release scope, architecture, the executor integration contract and the release boundary."
+read_when:
+  - "You add a feature or change the product scope or architecture."
+---
+
 # Little Mac Stats strategy
 
 ## Purpose

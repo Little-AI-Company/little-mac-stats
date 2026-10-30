@@ -1,3 +1,10 @@
+---
+title: "Native interface criteria"
+summary: "Apple HIG criteria for the CPU display, the process list and its controls, readability and compact presentation."
+read_when:
+  - "You change any visible interface, control, keyboard or accessibility behavior."
+---
+
 # Native interface criteria
 
 Reviewed against Apple's current Human Interface Guidelines on October 9, 2026. The criteria below apply that guidance to this compact CPU utility; the exact layout and sampling interval are product decisions.

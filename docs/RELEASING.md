@@ -1,3 +1,11 @@
+---
+title: "Releasing Little Mac Stats"
+summary: "Version and build numbers, packaging, Developer ID signing, notarization, the Sparkle appcast and the Homebrew cask."
+read_when:
+  - "You package the app, cut a release, or change signing, notarization, the update feed or the cask."
+  - "You need the release text for a version."
+---
+
 # Releasing Little Mac Stats
 
 The current version is 0.3.0, build 7, as recorded in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.thelittleworker.little-mac-stats`.
@@ -121,6 +129,12 @@ Read `generate_appcast --help` for the pinned version's options. It signs each u
 Publish archives and any generated delta files before publishing the appcast that references them. Verify public URLs, file sizes, signatures, version numbers, and minimum macOS version. An HTTPS URL alone does not establish that the archive is signed correctly.
 
 Before announcing a release, install a genuine older Developer ID signed, notarized build in `/Applications`. Update to the new signed, notarized build through Sparkle. Verify manual Check for Updates, automatic checks disabled, automatic checks enabled, the quiet inline reminder when the panel opens, cancellation, failed downloads, and successful replacement/relaunch. Scheduled discovery must not open an unsolicited alert, including near launch. Keep HTML release notes disabled to preserve the no-web-view design.
+
+The version and build change is an ordinary commit on `main`, such as `chore: set version 0.3.1, build 8`, landed with `scripts/push_main.sh` like any other ([Push to main](PUSH-MAIN.md)); tag that commit `vX.Y.Z` after it lands. A cloud session cannot create tags, so push the tag from a Mac. Write the GitHub release text from the `Customer-note:` trailers since the previous tag, skipping `none` entries:
+
+```sh
+git log --format='%(trailers:key=Customer-note,valueonly,unfold)' v0.3.0..main | sed '/^$/d;/^none/d'
+```
 
 Attach the notarized archive and generated appcast to a clearly marked GitHub prerelease while verifying the update path. This provides a real HTTPS download endpoint without announcing the build as stable. After successful installation/update checks, promote the release and mark it latest so the production feed URL resolves. Test available macOS versions and architectures and record the exact tested combinations in `docs/VALIDATION.md`; do not imply runtime coverage from cross-compilation alone. The first release was run on Apple silicon; Intel and earlier macOS runtime checks remain follow-up work.
 
