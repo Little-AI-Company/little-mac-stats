@@ -12,10 +12,12 @@ struct NativeProcess: Sendable {
 }
 
 enum NativeProcessReader {
+    private static let pidsStartedDuringRead = 256
+
     static func processIDs() throws -> [Int32] {
         let required = proc_listpids(UInt32(PROC_ALL_PIDS), 0, nil, 0)
         guard required > 0 else { throw ProcessCoreError.samplingFailed("process list unavailable") }
-        var identifiers = [Int32](repeating: 0, count: Int(required) / MemoryLayout<Int32>.size + 256)
+        var identifiers = [Int32](repeating: 0, count: Int(required) / MemoryLayout<Int32>.size + pidsStartedDuringRead)
         let bytes = identifiers.withUnsafeMutableBytes {
             proc_listpids(UInt32(PROC_ALL_PIDS), 0, $0.baseAddress, Int32($0.count))
         }

@@ -102,7 +102,7 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         totalLabel.setAccessibilityLabel("Total CPU usage")
         totalLabel.toolTip = "100% means all CPU capacity is in use."
         totalLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        historyView.toolTip = "Measured CPU usage over the last 60 seconds, on a fixed 0–100% scale."
+        historyView.toolTip = "Measured CPU usage over the last \(CPUHistorySample.windowSeconds) seconds, on a fixed 0–100% scale."
         searchField.placeholderString = "Search apps and processes"
         searchField.delegate = self
         searchField.sendsSearchStringImmediately = true
@@ -289,7 +289,7 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         latestSystemPercent = value
         latestSystemTimestamp = timestamp
         history.append(CPUHistorySample(timestamp: timestamp, percent: value))
-        history.removeAll { timestamp.timeIntervalSince($0.timestamp) > 60 }
+        history.removeAll { timestamp.timeIntervalSince($0.timestamp) > CPUHistorySample.window }
     }
 
     func resetSystemHistory() {

@@ -22,13 +22,27 @@ enum StatusDisplayRenderer {
         image(levels: levels(corePercentages: corePercentages, coreCount: coreCount))
     }
 
+    private enum Layout {
+        static let twoRowCoreLimit = 24
+        static let fewCoreRows = 2
+        static let manyCoreRows = 4
+        static let denseColumnLimit = 64
+        static let gap = 1.0
+        static let denseGap = 0.25
+        static let fewCoreBlockSize = 6.0
+        static let manyCoreBlockSize = 3.0
+        static let minimumBlockSize = 0.1
+        static let maximumWidth = 96.0
+    }
+
     static func image(levels: [Int]) -> NSImage {
         let levels = levels.isEmpty ? [0] : levels
-        let rows = min(levels.count, levels.count > 24 ? 4 : 2)
+        let rows = min(levels.count, levels.count > Layout.twoRowCoreLimit ? Layout.manyCoreRows : Layout.fewCoreRows)
         let columns = (levels.count + rows - 1) / rows
-        let gap = columns > 64 ? 0.25 : 1.0
-        let blockSize = min(rows <= 2 ? 6.0 : 3.0,
-                            max(0.1, (96.0 - Double(columns - 1) * gap) / Double(columns)))
+        let gap = columns > Layout.denseColumnLimit ? Layout.denseGap : Layout.gap
+        let blockSize = min(rows <= Layout.fewCoreRows ? Layout.fewCoreBlockSize : Layout.manyCoreBlockSize,
+                            max(Layout.minimumBlockSize,
+                                (Layout.maximumWidth - Double(columns - 1) * gap) / Double(columns)))
         let size = NSSize(width: Double(columns) * blockSize + Double(columns - 1) * gap,
                           height: Double(rows) * blockSize + Double(rows - 1) * gap)
         let image = NSImage(size: size, flipped: true) { _ in

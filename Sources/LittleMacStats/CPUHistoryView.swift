@@ -1,6 +1,9 @@
 import AppKit
 
 struct CPUHistorySample {
+    static let windowSeconds = 60
+    static let window = TimeInterval(windowSeconds)
+
     let timestamp: Date
     let percent: Double?
 }
@@ -14,14 +17,14 @@ final class CPUHistoryView: NSView {
         super.init(frame: frameRect)
         setAccessibilityElement(true)
         setAccessibilityRole(.image)
-        setAccessibilityLabel("CPU usage line chart over the last 60 seconds")
+        setAccessibilityLabel("CPU usage line chart over the last \(CPUHistorySample.windowSeconds) seconds")
     }
     required init?(coder: NSCoder) { nil }
 
     func update(samples: [CPUHistorySample], endTime: Date) {
         self.samples = samples
         self.endTime = endTime
-        let measured = samples.filter { $0.percent != nil && endTime.timeIntervalSince($0.timestamp) <= 60 }
+        let measured = samples.filter { $0.percent != nil && endTime.timeIntervalSince($0.timestamp) <= CPUHistorySample.window }
         let values = measured.compactMap(\.percent)
         let current = samples.last?.percent.map { "Current \(Int($0.rounded())) percent." } ?? "Current reading unavailable."
         if let first = measured.first, let minimum = values.min(), let maximum = values.max() {
@@ -51,7 +54,7 @@ final class CPUHistoryView: NSView {
         grid.stroke()
         ("100%" as NSString).draw(at: NSPoint(x: plot.maxX + 5, y: plot.maxY - 6), withAttributes: attributes)
         ("0%" as NSString).draw(at: NSPoint(x: plot.maxX + 5, y: plot.minY - 5), withAttributes: attributes)
-        ("60 seconds ago" as NSString).draw(at: NSPoint(x: plot.minX, y: 0), withAttributes: attributes)
+        ("\(CPUHistorySample.windowSeconds) seconds ago" as NSString).draw(at: NSPoint(x: plot.minX, y: 0), withAttributes: attributes)
         let now = "Now" as NSString
         now.draw(at: NSPoint(x: plot.maxX - now.size(withAttributes: attributes).width, y: 0), withAttributes: attributes)
 
@@ -63,11 +66,11 @@ final class CPUHistoryView: NSView {
         var previous: CPUHistorySample?
         for sample in samples {
             let elapsed = endTime.timeIntervalSince(sample.timestamp)
-            guard elapsed >= 0, elapsed <= 60, let percent = sample.percent else {
+            guard elapsed >= 0, elapsed <= CPUHistorySample.window, let percent = sample.percent else {
                 previous = nil
                 continue
             }
-            let point = NSPoint(x: plot.maxX - plot.width * elapsed / 60,
+            let point = NSPoint(x: plot.maxX - plot.width * elapsed / CPUHistorySample.window,
                                 y: plot.minY + plot.height * max(0, min(percent, 100)) / 100)
             if let previous, previous.percent != nil,
                sample.timestamp.timeIntervalSince(previous.timestamp) <= 5 {

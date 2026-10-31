@@ -1,4 +1,6 @@
 enum ProcessClassification {
+    private static let claudeVersionsDirectory = [".local", "share", "claude", "versions"]
+
     struct Attribution: Hashable {
         let id: String
         let name: String
@@ -31,11 +33,7 @@ enum ProcessClassification {
         if tool == nil && components.contains("Codex Framework.framework") {
             tool = Attribution(id: "tool:codex", name: "Codex")
         }
-        if tool == nil, components.count >= 5,
-           components[components.count - 5] == ".local",
-           components[components.count - 4] == "share",
-           components[components.count - 3] == "claude",
-           components[components.count - 2] == "versions" {
+        if tool == nil, components.dropLast().suffix(4).map(String.init) == claudeVersionsDirectory {
             let numbers = name.split(separator: ".", omittingEmptySubsequences: false)
             if numbers.count == 3 && numbers.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }) {
                 tool = Attribution(id: "tool:claude", name: "Claude")
