@@ -10,6 +10,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
         case paused
     }
 
+    private let launch: ValidationLaunch
     private let sampler = ProcessSampler()
     private let terminator = ProcessTerminator()
     private let updates = UpdateController()
@@ -32,6 +33,12 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
     private var renderedCoreLevels: [Int]?
     private var renderedCoreReadingsAvailable = false
     private var renderedDisplayStyle: StatusDisplayStyle?
+
+    init(launch: ValidationLaunch) {
+        self.launch = launch
+        super.init()
+    }
+
     private lazy var statusMenu = makeApplicationMenu(includeDisplayStyles: true)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -48,7 +55,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
         }
         self.panel = panel
         let panelSize = panel.preferredContentSize
-        if CommandLine.arguments.contains("--show-window") {
+        if launch.showsWindow {
             let window = NSWindow(contentRect: NSRect(origin: .zero, size: panelSize),
                                   styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             window.title = "Little Mac Stats"
@@ -85,7 +92,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
         center.addObserver(self, selector: #selector(willSleep(_:)), name: NSWorkspace.willSleepNotification, object: nil)
         center.addObserver(self, selector: #selector(didWake(_:)), name: NSWorkspace.didWakeNotification, object: nil)
         startSampling()
-        if validationWindow == nil && CommandLine.arguments.contains("--show-panel") {
+        if validationWindow == nil && launch.showsPanel {
             togglePanel(nil)
         }
     }
@@ -175,7 +182,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
                     self.hasSystemBaseline = true
                     if detailed { self.hasProcessBaseline = true }
                     self.render(snapshot, systemReady: systemReady, processesReady: processesReady)
-                    if detailed && processesReady && CommandLine.arguments.contains("--freeze-after-sample"),
+                    if detailed && processesReady && self.launch.freezesAfterSample,
                        let window = self.validationWindow {
                         window.title = "Little Mac Stats Validation Snapshot"
                         return

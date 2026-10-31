@@ -5,16 +5,12 @@ enum LittleMacStatsApplication {
     @MainActor
     static func main() {
         let application = NSApplication.shared
-        let validationLaunch = CommandLine.arguments.contains("--show-window") || CommandLine.arguments.contains("--show-panel")
-        application.setActivationPolicy(validationLaunch ? .regular : .accessory)
-        if CommandLine.arguments.contains("--show-window") {
-            if CommandLine.arguments.contains("--high-contrast-appearance") {
-                application.appearance = NSAppearance(named: .accessibilityHighContrastAqua)
-            } else if CommandLine.arguments.contains("--dark-appearance") {
-                application.appearance = NSAppearance(named: .darkAqua)
-            }
+        let launch = ValidationLaunch(arguments: CommandLine.arguments)
+        application.setActivationPolicy(launch.isValidation ? .regular : .accessory)
+        if let appearance = launch.applicationAppearance {
+            application.appearance = appearance
         }
-        let delegate = ApplicationDelegate()
+        let delegate = ApplicationDelegate(launch: launch)
         application.delegate = delegate
         withExtendedLifetime(delegate) {
             application.run()
