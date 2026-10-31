@@ -13,9 +13,9 @@ Small, well-explained contributions are welcome. You are responsible for every l
 
 For a bug fix, reproduce the problem on a named baseline commit before editing. Keep the command or user steps, expected behavior, observed result, and relevant source location. Fix the cause rather than hiding the symptom.
 
-Define an observable result and choose the cheapest reliable check that could detect a real failure. Reuse existing behavior tests. Add a focused test when it protects a contract or catches a plausible regression that existing checks miss. Use a real process or native UI interaction when an isolated unit test cannot establish the behavior.
+Define an observable result and choose the cheapest reliable check that could detect a real failure. Reuse the existing tests and `ProcessProbe` modes. Do not add a unit or integration test unless a maintainer asks for one; an end-to-end check against a real process or the native UI is welcome.
 
-Do not add tests that mirror the implementation, weaken assertions to get green, or build extra production layers just to support a test. Test-first works well for clear contracts; explore first when the behavior is not yet understood.
+Do not add code comments: say why through names, types and the commit message. Never weaken assertions to get green or build extra production layers just to support a test.
 
 ## Implement and verify
 

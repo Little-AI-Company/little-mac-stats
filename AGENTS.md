@@ -17,11 +17,20 @@ Build a small native macOS menu bar utility that shows CPU usage by app and lets
 
 Each file in `docs/` starts with a `title`, `summary` and `read_when` header. Read the headers first and open only the pages whose `read_when` fits the task.
 
+## Coding rules
+
+- Follow YAGNI: build what the task needs now, nothing for an imagined later.
+- When deleting code, leave no vestigial traces, whale legs, or references to the old implementation.
+- Never write a new unit test or integration test unless Parker explicitly asks for one. New end-to-end or system-level checks are allowed: a `ProcessProbe` mode or a test that drives a real disposable process.
+- Never add new code comments. Say why with a name, a type or the commit message. Only a shebang or a `shellcheck` directive may stay as a comment line.
+- Put temporary work files in `./tmp` if it exists, otherwise `/tmp`; never in the working tree.
+- To answer how a dependency works, read its source (`.build/checkouts/`, or clone it to `/tmp`).
+
 ## Working method
 
 - Read the affected code and current Git state before editing. Preserve unrelated work.
-- Define the observable result and the cheapest reliable check that could disprove it. Reuse existing checks before adding tests.
-- Use precise types, professional names, direct error handling, and small changes. Explain non-obvious boundaries; avoid speculative abstractions or compatibility layers.
+- Define the observable result and the cheapest reliable check that could disprove it. Reuse the existing tests and probe modes; see [Coding rules](#coding-rules) before adding any test.
+- Use precise types, professional names, direct error handling, and small changes. Make non-obvious boundaries clear through names and types, not comments; avoid speculative abstractions or compatibility layers.
 - Preserve Swift 6 concurrency checking. AppKit state belongs on the main actor; sampling and process work stay outside UI updates. Keep ownership and data flow explicit.
 - Follow the existing AppKit architecture. Do not introduce SwiftUI, web views, a new build system, or dependencies to implement an ordinary control.
 - Use one agent for work that fits one pass. When parallel work is requested and useful, assign file ownership first and coordinate shared APIs. Never revert another contributor's changes.
@@ -66,7 +75,7 @@ Choose checks for the affected behavior. Run a focused test while iterating, the
 | Change | Required evidence |
 | --- | --- |
 | Documentation only | Review the full diff, check links and referenced commands, and run `git diff --check`. No app build or release is needed. |
-| Swift code | Run `swift test` and `swift build -c release`. Add or retain tests only for meaningful contracts or plausible failures. |
+| Swift code | Run `swift test` and `swift build -c release`. Add no unit or integration test unless asked; see [Coding rules](#coding-rules). |
 | Native UI or app lifecycle | Also package and open the app. Exercise the changed control and its failure or empty state. Record macOS version and actual visual checks. |
 | CPU sampling or attribution | Also run the relevant probe modes against real processes. Verify CPU normalization, first-sample behavior, and closed-panel sampling as applicable. |
 | Termination | Also run `--verify-termination`; preserve stale-identity rejection and both signal modes. Exercise the native confirmation if its path changed. |
