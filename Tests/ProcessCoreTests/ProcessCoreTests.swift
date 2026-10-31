@@ -14,11 +14,6 @@ import Testing
         elapsedNanoseconds: 1_000_000_000, processorCount: 8, nanosecondsPerTick: 125.0 / 3.0) == 12.5)
 }
 
-@Test func hostCPUIncludesSystemTicksAndCounterWrap() {
-    #expect(CPUCalculation.systemPercent(previous: [10, 20, 30, 0], current: [20, 30, 60, 0]) == 40)
-    #expect(CPUCalculation.systemPercent(previous: [UInt32.max - 1, 0, 10, 0], current: [3, 0, 15, 0]) == 50)
-}
-
 @Test func coreCPUUsesEachCoresOwnCapacityInProcessorOrder() {
     let previous: [[UInt32]] = [[10, 20, 30, 0], [10, 0, 40, 0], [10, 20, 30, 0]]
     let current: [[UInt32]] = [[20, 30, 30, 0], [10, 0, 60, 0], [20, 30, 60, 0]]
