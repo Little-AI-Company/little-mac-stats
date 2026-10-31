@@ -39,7 +39,11 @@ paths. Run it after you change `push_main.sh`.
    not in the last paragraph is not a trailer.
 3. Rebases the commit onto `origin/main`. A conflict aborts the rebase and
    exits 3.
-4. Runs `git diff --check`. When anything other than Markdown, `assets/` or
+4. Runs `git diff --check` and the comment ratchet: it counts code comment
+   lines (`//` and `/*` in Swift, `#` in shell) in the commit's tree and in
+   `origin/main`, leaving out shebangs, `shellcheck` directives, `// MARK:` and
+   `// swift-tools-version`, and fails when the count rose, printing the new
+   lines. [AGENTS.md](../AGENTS.md#comments) bans new code comments. When anything other than Markdown, `assets/` or
    `LICENSE` changed, it also runs `swift test` and `swift build -c release`:
    in place on a Mac, and from Linux (a cloud session) on the M4 over
    `ssh m4`. There the commit goes over as a git bundle into a checkout at
@@ -94,7 +98,8 @@ say anything about the change.
 Customer-note: The selected row stays selected while the list refreshes.
 Customer-note: none (internal refactor)
 Tested: diff-check pass tree 3f2a9c1d7e0b
-Tested: swift-test pass (12 tests, M4 macOS 26.7.2) tree 3f2a9c1d7e0b
+Tested: no-new-comments pass (0 lines) tree 3f2a9c1d7e0b
+Tested: swift-test pass (11 tests, M4 macOS 26.7.2) tree 3f2a9c1d7e0b
 Tested: swift-build-release pass (M4 macOS 26.7.2) tree 3f2a9c1d7e0b
 Tested: swift skipped (docs only) tree 3f2a9c1d7e0b
 Tested: swift-test+build-release timed out after 10m

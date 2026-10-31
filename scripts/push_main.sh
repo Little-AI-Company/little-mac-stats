@@ -1,68 +1,19 @@
 #!/usr/bin/env bash
-# Check HEAD's one commit and fast-forward main with it (docs/PUSH-MAIN.md).
-# There are no pull requests, branches or CI runs in this repository
-# (Parker, 2026-10-30); every change lands through this script.
-#
-#   scripts/push_main.sh                  # check HEAD's one commit and push it
-#   scripts/push_main.sh --revert <sha>   # revert a commit on main and push that
-#   scripts/push_main.sh --verify         # check HEAD, change and push nothing
-#   scripts/push_main.sh --skip-checks "<why>"   # push without running any check
-#
-# It refuses a dirty tree, fetches origin/main, rebases the one commit ahead
-# of it onto it, and gates the message: a feat, fix or perf subject needs a
-# `Customer-note:` trailer (the release notes are read from it). Then it runs
-# the checks on that exact commit and writes them as trailers:
-#
-#   Tested: diff-check pass tree 3f2a9c1d7e0b
-#   Tested: swift-test pass (local macOS 26.1) tree 3f2a9c1d7e0b
-#   Tested: swift-build-release pass (local macOS 26.1) tree 3f2a9c1d7e0b
-#   Tested: swift skipped (docs only) tree 3f2a9c1d7e0b
-#
-# A change that touches only Markdown, assets/ or LICENSE runs no Swift
-# check. Otherwise it runs `swift test` and `swift build -c release` in place
-# on a Mac, and from Linux (a cloud session) on the M4 over `ssh m4`
-# (little-worker's scripts/m4-ssh-setup.sh), in a checkout on its build SSD
-# that receives the commit as a git bundle. With neither, it stops (exit 2):
-# Swift changes are not pushed unchecked. The packaged app, probe and UI
-# checks in AGENTS.md "Verification" are the author's; write them in the body.
-#
-# The Swift checks together get 10 minutes, on the M4 including the wait for
-# its checkout and the polling. Past that they are stopped (on the M4 too),
-# the script warns and pushes anyway, and the commit says so:
-#
-#   Tested: swift-test+build-release timed out after 10m
-#
-# --skip-checks runs no check, not even the diff check. It needs a non-empty
-# reason, which the commit keeps instead of every other Tested: line:
-#
-#   Tested: skipped: <why>
-#
-# The trailers change the message, not the tree, so the tree they name is the
-# tree that was checked. When main moved meanwhile it fetches, rebases, checks
-# again and retries (10 tries). The last line on standard output is
-# "PUSH: <state> <sha>", and the exit code says what to do next:
-#   0  pushed (or checked, with --verify)
-#   1  usage, or a git error
-#   2  a check failed or could not run (main is unchanged); a timeout is
-#      neither
-#   3  the rebase conflicts (it is aborted and the branch left as it was)
-#   4  main kept moving for 10 tries
-#   5  not pushable: dirty tree, nothing to push, more than one commit,
-#      or no Customer-note
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# Changes to these files need no Swift build.
 NO_BUILD_PATHS='(\.md$|^assets/|^LICENSE$)'
 M4_DIR="${PUSH_MAIN_M4_DIR:-/Volumes/Claude/little-mac-stats-push}"
 CLONE_URL="https://github.com/Little-AI-Company/little-mac-stats.git"
 RETRIES=10
-# Seconds the Swift checks may take. Tests set PUSH_MAIN_CHECK_TIMEOUT and
-# PUSH_MAIN_POLL (seconds between polls of the M4) to a few seconds.
 CAP="${PUSH_MAIN_CHECK_TIMEOUT:-600}"
 POLL="${PUSH_MAIN_POLL:-15}"
+SWIFT_COMMENT='^[[:space:]]*(//|/\*)'
+SWIFT_DIRECTIVE='^[[:space:]]*//[[:space:]]*(MARK:|swift-tools-version)'
+SHELL_COMMENT='^[[:space:]]*#'
+SHELL_DIRECTIVE='^[[:space:]]*#(!|[[:space:]]*shellcheck[[:space:]])'
 
 say() { echo "push-main: $*" >&2; }
 finish() {
@@ -73,7 +24,12 @@ finish() {
 }
 
 usage() {
-  sed -n '6,9p' "$0" | sed 's/^# \{0,1\}//' >&2
+  cat >&2 <<'USAGE'
+  scripts/push_main.sh                  # check HEAD's one commit and push it
+  scripts/push_main.sh --revert <sha>   # revert a commit on main and push that
+  scripts/push_main.sh --verify         # check HEAD, change and push nothing
+  scripts/push_main.sh --skip-checks "<why>"   # push without running any check
+USAGE
   exit 1
 }
 [[ "$CAP" =~ ^[1-9][0-9]*$ ]] && [[ "$POLL" =~ ^[1-9][0-9]*$ ]] || {
@@ -132,6 +88,16 @@ if [ -n "$revert" ]; then
   say "reverted ${target:0:12} as $(git rev-parse --short=12 HEAD)"
 fi
 
+comment_lines() {
+  { git grep -hE "$SWIFT_COMMENT" "$1" -- '*.swift' | grep -Ev "$SWIFT_DIRECTIVE" || true
+    git grep -hE "$SHELL_COMMENT" "$1" -- '*.sh' | grep -Ev "$SHELL_DIRECTIVE" || true; } | grep -c . || true
+}
+
+new_comment_lines() {
+  { git diff -U0 origin/main HEAD -- '*.swift' | sed -n 's/^+//p' | grep -v '^++' | grep -E "$SWIFT_COMMENT" | grep -Ev "$SWIFT_DIRECTIVE" || true
+    git diff -U0 origin/main HEAD -- '*.sh' | sed -n 's/^+//p' | grep -v '^++' | grep -E "$SHELL_COMMENT" | grep -Ev "$SHELL_DIRECTIVE" || true; }
+}
+
 trailer() { git log -1 --format="%(trailers:key=$1,valueonly,unfold)" | sed '/^$/d'; }
 rebase() {
   [ "$(git merge-base HEAD origin/main)" != "$(git rev-parse origin/main)" ] || return 0
@@ -152,9 +118,6 @@ if [[ "$subject" =~ ^(feat|fix|perf)(\([^\)]*\))?!?: ]] && [ -z "$(trailer Custo
   finish 5 "no-customer-note $(git rev-parse HEAD) : add 'Customer-note: <one sentence>' or 'Customer-note: none (<reason>)' as a trailer"
 fi
 
-# Runs a command in its own process group with its output in a log file. It
-# gets CAP seconds; after that the whole group is stopped and TIMED_OUT is 1.
-# Returns the command's status.
 TIMED_OUT=0
 capped() {
   local log="$1" rc=0 start
@@ -185,10 +148,6 @@ local_swift_run() {
   swift build -c release || return 11
 }
 
-# Runs `swift test` and `swift build -c release` on HEAD, here on a Mac or on
-# the M4 from anywhere else, within CAP seconds. Sets SWIFT_WHERE; returns the
-# checks' exit code (test failure 10, build failure 11, cannot run 12, ran
-# past the cap 124).
 swift_checks() {
   local start=$SECONDS
   if [ "$(uname -s)" = Darwin ] && command -v swift >/dev/null 2>&1; then
@@ -202,8 +161,6 @@ swift_checks() {
     SWIFT_WHERE="no Mac and no ssh m4"
     return 12
   fi
-  # The job runs detached on the M4 and is polled with short ssh calls: one
-  # ssh session held open for a whole build drops through the cloud proxy.
   local sha job code
   sha="$(git rev-parse HEAD)"
   job="$M4_DIR.jobs/${sha:0:12}-$$"
@@ -224,15 +181,11 @@ run() {
   swift build -c release || return 11
 }
 work() {
-  # A mkdir lock keeps two pushes from sharing the checkout at once.
   find "\$d.lock" -maxdepth 0 -mmin +60 -exec rm -rf {} + 2>/dev/null
   until mkdir "\$d.lock" 2>/dev/null; do echo "waiting for \$d.lock"; sleep 10; done
   trap 'rm -rf "\$d.lock"' EXIT
   run
 }
-# The lock wait and the checks run in their own process group, stopped by a
-# watchdog when the pushing side gives up (it removes \$job) or, as a backstop,
-# 30 seconds after the cap.
 set -m
 work &
 wp=\$!
@@ -275,8 +228,6 @@ REMOTE
       misses=$((misses + 1))
       [ "$misses" -lt 8 ] || code=12
     fi
-    # The cap counts the whole wait, the M4's lock queue included. Removing
-    # the job directory below tells the M4's watchdog to stop the job.
     [ -n "$code" ] || [ "$elapsed" -lt "$CAP" ] || code=124
     if [ -z "$code" ] && [ "$elapsed" -ge "$next_note" ]; then
       say "still running on the M4 (${elapsed}s)"
@@ -290,7 +241,6 @@ REMOTE
   return "$code"
 }
 
-# Runs the checks on HEAD and sets TESTED (trailer lines) and STATE.
 run_checks() {
   local tree code tests
   tree="$(git rev-parse HEAD^{tree} | cut -c1-12)"
@@ -307,6 +257,17 @@ run_checks() {
     TESTED+=("Tested: diff-check fail tree $tree")
     STATE=fail
     cat "$tmp/diff-check.log" >&2
+  fi
+  local before after
+  before="$(comment_lines origin/main)"
+  after="$(comment_lines HEAD)"
+  if [ "$after" -gt "$before" ]; then
+    TESTED+=("Tested: no-new-comments fail ($before to $after lines) tree $tree")
+    STATE=fail
+    say "comment lines rose from $before to $after; AGENTS.md bans new code comments. New lines:"
+    new_comment_lines >&2
+  else
+    TESTED+=("Tested: no-new-comments pass ($after lines) tree $tree")
   fi
   if ! git diff --name-only origin/main HEAD | grep -Evq "$NO_BUILD_PATHS"; then
     TESTED+=("Tested: swift skipped (docs only) tree $tree")
@@ -331,7 +292,6 @@ run_checks() {
       STATE=fail
       ;;
     124)
-      # Pushed anyway: the state stays pass and the trailer says what happened.
       TESTED+=("Tested: swift-test+build-release timed out after $(cap_label)")
       tail -10 "$tmp/swift.log" >&2 || true
       say "WARNING: swift test and swift build ran past $(cap_label) and were stopped; pushing anyway, and the Tested: trailer says so"

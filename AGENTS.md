@@ -166,7 +166,8 @@ commit its wait. We revert instead of adding gates.
 - Push only with `scripts/push_main.sh`. It rebases onto `origin/main`, runs
   `git diff --check` and, unless only Markdown, `assets/` or `LICENSE` changed,
   `swift test` and `swift build -c release` on the exact commit (on the M4 over
-  `ssh m4` from a cloud session; ten minutes at most), writes a `Tested:`
+  `ssh m4` from a cloud session; ten minutes at most), fails a commit that
+  adds code comment lines, writes a `Tested:`
   trailer naming the tree that passed, and pushes, retrying when `main` moved.
   `--skip-checks "<why>"` is always allowed and always recorded. Never write a
   `Tested:` line by hand, never push `main` another way, never force-push,

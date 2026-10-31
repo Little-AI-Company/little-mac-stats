@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-# Tests for scripts/push_main.sh: the 10 minute cap, --skip-checks, the retry
-# count and the Swift check paths, against a temporary bare origin.
-#
-#   scripts/push_main_test.sh
-#
-# Nothing here needs a Mac, Swift or the real M4. `uname`, `ssh`, `swift` and
-# `sw_vers` are stubs on PATH: the ssh stub runs the remote command in a local
-# shell, so the detached job, its polling and its cleanup run as they do on the
-# M4. The cap and the poll interval are a few seconds.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -27,8 +18,6 @@ cat >"$ROOT/bin/sw_vers" <<'STUB'
 #!/usr/bin/env bash
 echo 26.0
 STUB
-# STUB_SWIFT: pass | fail | hang (sleeps until killed, pid in $STUB_PIDFILE) |
-# race (pushes a commit to origin from the second clone once, then passes).
 cat >"$ROOT/bin/swift" <<'STUB'
 #!/usr/bin/env bash
 echo "swift $*" >>"$STUB_SWIFT_LOG"
@@ -48,7 +37,6 @@ esac
 STUB
 cat >"$ROOT/bin/ssh" <<'STUB'
 #!/usr/bin/env bash
-# Drop the options and the host, run the command in a local shell.
 echo "ssh $*" >>"$STUB_SSH_LOG"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -71,8 +59,6 @@ expect_eq() { [ "$1" = "$2" ] || fail "$3: expected '$2', got '$1'"; }
 expect_has() { grep -qF -- "$2" <<<"$1" || fail "$3: expected to find '$2' in: $1"; }
 expect_lacks() { ! grep -qF -- "$2" <<<"$1" || fail "$3: did not expect '$2' in: $1"; }
 
-# A bare origin, a work clone holding a copy of the script and one Swift file,
-# a second clone that plays another pusher, and a pre-made "M4" checkout.
 setup() {
   T="$ROOT/t$tests"
   mkdir -p "$T"
@@ -93,7 +79,6 @@ setup() {
   git -C "$T/work" commit -q -m "${1:-chore: add b}"
 }
 
-# push [VAR=value ...] -- [args]: runs the copied script with the stubs.
 push() {
   local envs=()
   while [ "$1" != -- ]; do
@@ -137,8 +122,7 @@ expect_has "$ERR" "WARNING: swift test and swift build ran past 5s" "warning"
 body="$(origin_body)"
 expect_has "$body" "Tested: swift-test+build-release timed out after 5s" "timeout trailer"
 expect_lacks "$body" "swift-test pass" "no pass line"
-expect_eq "$(grep -c '^Tested: ' <<<"$body")" 2 "trailer count (diff-check and timeout)"
-# The hung swift on the "M4" is killed by the watchdog, the lock and job dirs go.
+expect_eq "$(grep -c '^Tested: ' <<<"$body")" 3 "trailer count (diff-check, no-new-comments and timeout)"
 for _ in $(seq 20); do
   kill -0 "$(cat "$T/hang.pid" 2>/dev/null || echo 0)" 2>/dev/null || break
   sleep 1
