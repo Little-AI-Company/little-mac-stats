@@ -29,18 +29,19 @@ public actor ProcessTerminator {
     public func terminate(_ group: ProcessGroup, mode: TerminationMode) throws {
         guard !group.processes.isEmpty else { return }
         for process in group.processes { try validate(process) }
-        let selected = Set(group.processes.map(\.pid))
-        let ordered = group.processes.sorted { first, second in
-            func depth(_ process: ProcessSample) -> Int {
-                var parent = process.parentPID
-                var visited: Set<Int32> = []
-                while selected.contains(parent), visited.insert(parent).inserted,
-                      let record = group.processes.first(where: { $0.pid == parent }) { parent = record.parentPID }
-                return visited.count
-            }
-            return depth(first) > depth(second)
+        for process in Self.descendantsFirst(group.processes) { try signal(process, mode: mode) }
+    }
+
+    private static func descendantsFirst(_ processes: [ProcessSample]) -> [ProcessSample] {
+        let selected = Set(processes.map(\.pid))
+        func depth(_ process: ProcessSample) -> Int {
+            var parent = process.parentPID
+            var visited: Set<Int32> = []
+            while selected.contains(parent), visited.insert(parent).inserted,
+                  let record = processes.first(where: { $0.pid == parent }) { parent = record.parentPID }
+            return visited.count
         }
-        for process in ordered { try signal(process, mode: mode) }
+        return processes.sorted { depth($0) > depth($1) }
     }
 
     private func validate(_ process: ProcessSample) throws {
