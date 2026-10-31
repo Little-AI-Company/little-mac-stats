@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# The same checked-in sources and lockfile supply development and distribution builds.
 repository_directory="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repository_directory"
 output_directory="${OUTPUT_DIRECTORY:-$repository_directory/dist}"
@@ -78,12 +77,10 @@ if [[ "$distribution" == 1 ]]; then
 elif [[ "$signing_identity" != - ]]; then
     signing_arguments+=(--options runtime --timestamp=none)
 else
-    # Ad hoc local builds omit hardened runtime so Library Validation permits Sparkle.
     signing_arguments+=(--timestamp=none)
 fi
 framework="$application/Contents/Frameworks/Sparkle.framework"
 framework_version="$framework/Versions/Current"
-# Sign from the inner helpers outwards. Do not use --deep to create signatures.
 codesign "${signing_arguments[@]}" "$framework_version/Autoupdate"
 codesign "${signing_arguments[@]}" "$framework_version/Updater.app"
 codesign "${signing_arguments[@]}" "$framework_version/XPCServices/Downloader.xpc"

@@ -75,7 +75,6 @@ final class CPUHistoryView: NSView {
             } else {
                 line.move(to: point)
             }
-            // A single measured sample remains visible without inventing earlier values.
             NSBezierPath(ovalIn: NSRect(x: point.x - 1, y: point.y - 1, width: 2, height: 2)).fill()
             previous = sample
         }

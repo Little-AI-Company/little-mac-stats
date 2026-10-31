@@ -15,7 +15,6 @@ enum NativeProcessReader {
     static func processIDs() throws -> [Int32] {
         let required = proc_listpids(UInt32(PROC_ALL_PIDS), 0, nil, 0)
         guard required > 0 else { throw ProcessCoreError.samplingFailed("process list unavailable") }
-        // Leave room for processes created between the size query and the read.
         var identifiers = [Int32](repeating: 0, count: Int(required) / MemoryLayout<Int32>.size + 256)
         let bytes = identifiers.withUnsafeMutableBytes {
             proc_listpids(UInt32(PROC_ALL_PIDS), 0, $0.baseAddress, Int32($0.count))
@@ -37,8 +36,8 @@ enum NativeProcessReader {
     }
 
     static func executablePath(_ pid: Int32) -> String {
-        // The SDK's compound PROC_PIDPATHINFO_MAXSIZE macro is not imported by Swift.
-        var path = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
+        let procPIDPathInfoMaxSize = 4 * Int(MAXPATHLEN)
+        var path = [CChar](repeating: 0, count: procPIDPathInfoMaxSize)
         let count = path.withUnsafeMutableBytes { proc_pidpath(pid, $0.baseAddress, UInt32($0.count)) }
         guard count > 0 else { return "" }
         return path.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
@@ -51,7 +50,6 @@ enum NativeProcessReader {
         var task = proc_taskinfo()
         let taskSize = MemoryLayout<proc_taskinfo>.size
         let hasTask = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &task, Int32(taskSize)) == taskSize
-        // Reject a record assembled across process exit and PID reuse.
         guard let checked = bsdInfo(pid), identity(checked) == firstIdentity else { return nil }
         let name = withUnsafeBytes(of: &info.pbi_name) { bytes in
             String(decoding: bytes.prefix(while: { $0 != 0 }), as: UTF8.self)
@@ -61,8 +59,6 @@ enum NativeProcessReader {
         }
         return NativeProcess(identity: firstIdentity, parentPID: Int32(info.pbi_ppid), realUID: info.pbi_ruid,
                              name: name.isEmpty ? fallback : name, executablePath: path,
-                             // PROC_PIDTASKINFO cumulative times use Mach absolute ticks.
-                             // See Apple's xnu/osfmk/kern/bsd_kern.c fill_taskprocinfo.
                              cpuTicks: hasTask ? task.pti_total_user + task.pti_total_system : nil,
                              residentMemoryBytes: hasTask ? task.pti_resident_size : 0)
     }
@@ -89,7 +85,6 @@ enum NativeProcessReader {
         var information: processor_info_array_t?
         let result = host_processor_info(host, PROCESSOR_CPU_LOAD_INFO, &processorCount,
                                          &information, &informationCount)
-        // host_processor_info returns an out-of-line VM allocation, not a malloc buffer.
         defer {
             if let information {
                 vm_deallocate(mach_task_self_, vm_address_t(UInt(bitPattern: information)),
@@ -99,7 +94,6 @@ enum NativeProcessReader {
         let statesPerCore = Int(CPU_STATE_MAX)
         guard result == KERN_SUCCESS, let information, processorCount > 0,
               Int(informationCount) == Int(processorCount) * statesPerCore else { return nil }
-        // The kernel returns processor_array order, with user/system/idle/nice ticks for each core.
         return (0..<Int(processorCount)).map { processor in
             let offset = processor * statesPerCore
             return (0..<statesPerCore).map { UInt32(bitPattern: information[offset + $0]) }

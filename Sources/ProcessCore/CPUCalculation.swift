@@ -5,7 +5,6 @@ enum CPUCalculation {
                                processorCount: Int, nanosecondsPerTick: Double = 1) -> Double {
         guard current >= previous, elapsedNanoseconds > 0, processorCount > 0,
               nanosecondsPerTick.isFinite, nanosecondsPerTick > 0 else { return 0 }
-        // Convert the delta as a Double; multiplying absolute UInt64 counters can overflow.
         let percent = Double(current - previous) * nanosecondsPerTick
             / Double(elapsedNanoseconds) / Double(processorCount) * 100
         return min(100, max(0, percent))
@@ -13,7 +12,6 @@ enum CPUCalculation {
 
     static func systemPercent(previous: [UInt32], current: [UInt32]) -> Double {
         guard previous.count == current.count, current.count == 4 else { return 0 }
-        // Host tick counters are 32-bit and wrap during long uptime.
         let deltas = zip(previous, current).map { UInt64($1 &- $0) }
         let total = deltas.reduce(0, +)
         guard total > 0 else { return 0 }
@@ -26,7 +24,6 @@ enum CPUCalculation {
         var percentages: [Double] = []
         percentages.reserveCapacity(current.count)
         for (before, after) in zip(previous, current) {
-            // No elapsed ticks are an unknown reading, rather than proof that this core was idle.
             guard before.count == 4, after.count == 4, before != after else { return nil }
             percentages.append(systemPercent(previous: before, current: after))
         }

@@ -3,7 +3,6 @@ set -euo pipefail
 
 repository_directory="$(cd "$(dirname "$0")/.." && pwd)"
 source_image="${1:-$repository_directory/assets/icon-macos.png}"
-# Renditions of 32 pixels or fewer use simplified art that stays readable in Finder lists.
 small_source_image="${2:-$repository_directory/assets/icon-macos-small.png}"
 output_icon="${3:-$repository_directory/Resources/AppIcon.icns}"
 for image in "$source_image" "$small_source_image"; do

@@ -175,7 +175,6 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate, NSPopoverDeleg
                     self.hasSystemBaseline = true
                     if detailed { self.hasProcessBaseline = true }
                     self.render(snapshot, systemReady: systemReady, processesReady: processesReady)
-                    // Windowed validation may pause after two real samples for stable native control inspection.
                     if detailed && processesReady && CommandLine.arguments.contains("--freeze-after-sample"),
                        let window = self.validationWindow {
                         window.title = "Little Mac Stats Validation Snapshot"

@@ -28,9 +28,7 @@ public actor ProcessTerminator {
 
     public func terminate(_ group: ProcessGroup, mode: TerminationMode) throws {
         guard !group.processes.isEmpty else { return }
-        // No signals are sent if a selected member is already stale or protected.
         for process in group.processes { try validate(process) }
-        // Stop descendants first so a parent exit cannot invalidate attribution mid-action.
         let selected = Set(group.processes.map(\.pid))
         let ordered = group.processes.sorted { first, second in
             func depth(_ process: ProcessSample) -> Int {
@@ -59,7 +57,6 @@ public actor ProcessTerminator {
 
     private func signal(_ process: ProcessSample, mode: TerminationMode) throws {
         try validate(process)
-        // Identity is checked again after path and ancestry inspection, immediately before kill.
         guard let latest = NativeProcessReader.bsdInfo(process.pid) else {
             throw ProcessCoreError.processUnavailable(process.pid)
         }

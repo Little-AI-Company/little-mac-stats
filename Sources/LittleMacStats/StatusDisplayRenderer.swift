@@ -26,7 +26,6 @@ enum StatusDisplayRenderer {
         let levels = levels.isEmpty ? [0] : levels
         let rows = min(levels.count, levels.count > 24 ? 4 : 2)
         let columns = (levels.count + rows - 1) / rows
-        // Small Macs get two rows; larger machines keep every core in four compact rows.
         let gap = columns > 64 ? 0.25 : 1.0
         let blockSize = min(rows <= 2 ? 6.0 : 3.0,
                             max(0.1, (96.0 - Double(columns - 1) * gap) / Double(columns)))

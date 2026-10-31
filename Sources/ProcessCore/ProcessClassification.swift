@@ -31,7 +31,6 @@ enum ProcessClassification {
         if tool == nil && components.contains("Codex Framework.framework") {
             tool = Attribution(id: "tool:codex", name: "Codex")
         }
-        // Claude's native installer resolves its symlink to a version-named executable.
         if tool == nil, components.count >= 5,
            components[components.count - 5] == ".local",
            components[components.count - 4] == "share",
@@ -105,7 +104,6 @@ enum ProcessClassification {
         let byPID: [Int32: NativeProcess]
         let executables: [String: ExecutableClassification]
         let applicationTools: [String: Attribution]
-        // This cache exists for one snapshot only. exec can change a path without changing start identity.
         var resolved: [Int32: Resolution] = [:]
         var visiting: Set<Int32> = []
 

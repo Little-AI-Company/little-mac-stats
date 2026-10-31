@@ -290,7 +290,6 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         latestSystemTimestamp = timestamp
         history.append(CPUHistorySample(timestamp: timestamp, percent: value))
         history.removeAll { timestamp.timeIntervalSince($0.timestamp) > 60 }
-        // Closed-panel samples keep history current without loading or repainting its views.
     }
 
     func resetSystemHistory() {
@@ -386,7 +385,6 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         if structureChanged {
             reloadOutline(selectedKey: selectedKey, expanded: expanded)
         } else {
-            // Update values in place so selection and accessibility rows survive CPU changes.
             let visibleRows = outline.rows(in: outline.visibleRect)
             guard visibleRows.location != NSNotFound else { return }
             for row in visibleRows.location..<min(NSMaxRange(visibleRows), outline.numberOfRows) {
@@ -549,7 +547,6 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
                 guard let index = components.firstIndex(where: { $0.hasSuffix(".app") }) else { return nil }
                 return "/" + components[...index].joined(separator: "/")
             }).sorted()
-            // A tool's descendants can include unrelated apps. Only its own bundle supplies its icon.
             let identifierMatch = expectedIdentifier.flatMap { identifier in
                 candidates.first { candidate in
                     if inspectedApplications.insert(candidate).inserted,
@@ -567,7 +564,6 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         }
         guard let path else { return terminalIcon }
         if let image = applicationIcons[path] { return image }
-        // Keep only the 18-point representation used by the list, rather than a full icon asset.
         let image = autoreleasepool {
             let source = NSWorkspace.shared.icon(forFile: path)
             let size = NSSize(width: 18, height: 18)
@@ -658,7 +654,6 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
     @objc private func stopSelected(_ sender: Any?) {
         guard outline.selectedRow >= 0 else { return }
         let item = outline.item(atRow: outline.selectedRow)
-        // Capture immutable values before displaying the alert or awaiting any work.
         let group = (item as? GroupRow)?.group
         let process = (item as? ProcessRow)?.process
         guard group?.canTerminate == true || process?.canTerminate == true else { return }

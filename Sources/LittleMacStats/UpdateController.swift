@@ -2,7 +2,6 @@ import AppKit
 import Observation
 import Sparkle
 
-/// Sparkle owns the update cycle; this type supplies quiet reminders to the native interface.
 @MainActor
 @Observable
 final class UpdateController: NSObject, @preconcurrency SPUStandardUserDriverDelegate {
@@ -46,7 +45,6 @@ final class UpdateController: NSObject, @preconcurrency SPUStandardUserDriverDel
             return
         }
 
-        // Sparkle documents these properties as main-thread, KVO-compliant UI state.
         availabilityObservation = controller.updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { [weak self] updater, _ in
             MainActor.assumeIsolated {
                 self?.canCheckForUpdates = updater.canCheckForUpdates
@@ -70,7 +68,6 @@ final class UpdateController: NSObject, @preconcurrency SPUStandardUserDriverDel
     func standardUserDriverShouldHandleShowingScheduledUpdate(
         _ update: SUAppcastItem, andInImmediateFocus immediateFocus: Bool
     ) -> Bool {
-        // Scheduled discovery never opens a window, including just after launch.
         false
     }
 
