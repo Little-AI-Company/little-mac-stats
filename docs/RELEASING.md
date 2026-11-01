@@ -130,7 +130,7 @@ Publish archives and any generated delta files before publishing the appcast tha
 
 Before announcing a release, install a genuine older Developer ID signed, notarized build in `/Applications`. Update to the new signed, notarized build through Sparkle. Verify manual Check for Updates, automatic checks disabled, automatic checks enabled, the quiet inline reminder when the panel opens, cancellation, failed downloads, and successful replacement/relaunch. Scheduled discovery must not open an unsolicited alert, including near launch. Keep HTML release notes disabled to preserve the no-web-view design.
 
-The version and build change is an ordinary commit on `main`, such as `chore: set version 0.3.1, build 8`, landed with `scripts/push_main.sh` like any other ([Push to main](PUSH-MAIN.md)); tag that commit `vX.Y.Z` after it lands. A cloud session cannot create tags, so push the tag from a Mac. Write the GitHub release text from the `Customer-note:` trailers since the previous tag, skipping `none` entries:
+The version and build change is an ordinary commit on `main`, such as `chore: set version 0.3.1, build 8`, landed with `scripts/push_main.sh` like any other; tag that commit `vX.Y.Z` after it lands. A cloud session cannot create tags, so push the tag from a Mac. Write the GitHub release text from the `Customer-note:` trailers since the previous tag, skipping `none` entries:
 
 ```sh
 git log --format='%(trailers:key=Customer-note,valueonly,unfold)' v0.3.0..main | sed '/^$/d;/^none/d'

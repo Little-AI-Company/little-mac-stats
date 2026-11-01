@@ -77,7 +77,7 @@ with an older sentence anywhere in this repository, this section wins.
 - `scripts/push_main.sh`: the only way a commit reaches `main`; see [Shipping on main](#shipping-on-main).
 - `docs/STRATEGY.md`, `docs/NATIVE-DESIGN.md`: product scope and native interface criteria.
 - `docs/VALIDATION.md`, `docs/RELEASING.md`: measured evidence, known limits, and distribution procedure.
-- `docs/PUSH-MAIN.md`: what `scripts/push_main.sh` checks, its trailers, and its exit codes.
+- `scripts/push_main.conf`: this repository's check; `scripts/push_main.sh --help` lists the options and exit codes. The script is the one every small Little AI Company repository shares; never edit it here.
 
 Each file in `docs/` starts with a `title`, `summary` and `read_when` header. Read the headers first and open only the pages whose `read_when` fits the task.
 
@@ -179,15 +179,15 @@ commit its wait. We revert instead of adding gates.
   from [Verification](#verification), such as packaged-app, probe or UI checks,
   in the commit body.
 - Push only with `scripts/push_main.sh`. It rebases onto `origin/main`, runs
-  `git diff --check` and, unless only Markdown, `assets/` or `LICENSE` changed,
-  `swift test` and `swift build -c release` on the exact commit (on the M4 over
-  `ssh m4` from a cloud session; ten minutes at most), fails a commit that
-  adds code comment lines, writes a `Tested:`
+  `git diff --check`, `swift test` and `swift build -c release` on the exact
+  commit when `Sources/`, `Tests/`, `Resources/`, `scripts/` or the package
+  changed (as a detached job on the M4 over `ssh m4` from a cloud session; ten
+  minutes at most), refuses a commit that adds code comment lines or a `feat`,
+  `fix` or `perf` commit without a `Customer-note:`, writes a `Tested:`
   trailer naming the tree that passed, and pushes, retrying when `main` moved.
   `--skip-checks "<why>"` is always allowed and always recorded. Never write a
   `Tested:` line by hand, never push `main` another way, never force-push,
-  amend or rewrite a pushed commit. [Push to main](docs/PUSH-MAIN.md) has the
-  details and exit codes.
+  amend or rewrite a pushed commit.
 - After the push nobody waits. Nothing checks `main` after the push; the
   packaged app is the check. A red `main` is fixed forward or reverted within
   the hour by whoever pushed it, and by whoever sees it when the author is gone

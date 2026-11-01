@@ -29,7 +29,7 @@ For performance changes, measure the baseline and changed Release builds under c
 
 ## Send the change
 
-Changes land on `main` as single commits; there are no branches, merge buttons or CI runs. Maintainers and agents commit on `main` and run `scripts/push_main.sh`, which rebases, runs the build and tests on the exact commit, records them as `Tested:` trailers and pushes. See [Push to main](docs/PUSH-MAIN.md).
+Changes land on `main` as single commits; there are no branches, merge buttons or CI runs. Maintainers and agents commit on `main` and run `scripts/push_main.sh`, which rebases, runs the build and tests on the exact commit, records them as `Tested:` trailers and pushes. `scripts/push_main.sh --help` lists its options and exit codes.
 
 From outside the project, open an issue, or a pull request against `main` with the fix. A maintainer reviews it, lands it on `main` as one commit with you credited as co-author, and closes the pull request with a link to that commit. Before you send it:
 
