@@ -1,6 +1,6 @@
 # Brand assets
 
-Little Mac Stats is part of the little family with [Little Worker](https://thelittleworker.com) and [Little CI](https://github.com/ParkerRex/little-ci). Its character is the meter: a rounded white head with three meter bars on top (short, tall, medium), wearing the family's black ribbed turtleneck. The bars continue the original Mac Stats mark.
+Little Mac Stats is part of the little family with [Little Worker](https://thelittleworker.com) and [Little Limits](https://github.com/Little-AI-Company/little-limits). Its character is the meter: a rounded white head with three meter bars on top (short, tall, medium), wearing the family's black ribbed turtleneck. The bars continue the original Mac Stats mark.
 
 Art was first generated with Codex CLI image generation on October 20, 2026, and redrawn on October 29, 2026 the same way on the M4, with Lou's character sheet and the first version's icon and banner attached as references. Every file with words keeps the first version's wordmark and tagline pixels; a script puts the new character on the same lavender circle (or in the old mark's box), and makes the rounded icons, crops and sizes. Nothing was retouched by hand. No third-party logo is used.
 
@@ -11,7 +11,7 @@ Redrawn on October 29, 2026 in the style of Little Worker's new character cast (
 - Clean dark line art (about #111), medium-heavy, round ends. Soft flat colour with one gentle shade. No gloss, glow or texture.
 - A big head: the meter block is about as tall as the body. Glossy oval eyes with a white highlight, soft blush, a calm smile at rest and an open smile in the full-body poses.
 - The family's black ribbed turtleneck, white gloves, white sneakers, and a thin Paper edge round the figure.
-- Accent: soft lavender circle, about `#E6E0F3` (deep lavender `#3A3450` on the dark icon). Little CI uses mint, Little Logbook peach, Little Limits butter.
+- Accent: soft lavender circle, about `#E6E0F3` (deep lavender `#3A3450` on the dark icon). Little Logbook uses peach, Little Limits butter.
 - Background: Paper, about `#FBFAF7`.
 - Wordmark: lowercase "little mac stats" in a rounded type, unchanged from the first version.
 - Tagline: "Know what is using your Mac."

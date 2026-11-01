@@ -1,5 +1,5 @@
 > [!NOTE]
-> This app was called **Mac Stats** until October 2026. It is now **Little Mac Stats**, part of the little family with [Little Worker](https://thelittleworker.com) and [Little CI](https://github.com/ParkerRex/little-ci). The rename is a clean break: the app has a new name, bundle identifier, update feed, and Homebrew cask, so Mac Stats 0.2.0 and earlier will not update to it. Quit and delete Mac Stats, then install Little Mac Stats.
+> This app was called **Mac Stats** until October 2026. It is now **Little Mac Stats**, part of the little family with [Little Worker](https://thelittleworker.com) and [Little Limits](https://github.com/Little-AI-Company/little-limits). The rename is a clean break: the app has a new name, bundle identifier, update feed, and Homebrew cask, so Mac Stats 0.2.0 and earlier will not update to it. Quit and delete Mac Stats, then install Little Mac Stats.
 
 I made this to see which AI bot is eating my CPU without digging through traces or dealing with bloated, slow stats apps.
 
