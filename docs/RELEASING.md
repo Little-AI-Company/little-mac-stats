@@ -8,7 +8,7 @@ read_when:
 
 # Releasing Little Mac Stats
 
-The current version is 0.3.0, build 7, as recorded in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.thelittleworker.little-mac-stats`.
+The current version is 0.4.0, build 8, as recorded in `Resources/Info.plist`. Packaging reads its default version and build number from that file; `VERSION` and `BUILD_NUMBER` can override them. The bundle identifier is `com.thelittleworker.little-mac-stats`.
 
 Releases through 0.2.0 shipped as Mac Stats with the bundle identifier `com.parkerrex.mac-stats`, the Sparkle key account of the same name, and the `mac-stats` Homebrew cask. The rename to Little Mac Stats is a clean break: those builds do not update to Little Mac Stats, and the release evidence below was recorded on them. Little Mac Stats 0.3.0 starts a new update chain. Its signing, notarization, appcast, and Homebrew checks are recorded in [validation](VALIDATION.md); an installed update from one Little Mac Stats build to the next has not been exercised yet.
 
@@ -23,7 +23,7 @@ scripts/package_app.sh
 open "dist/Little Mac Stats.app"
 ```
 
-Packaging uses the checked-in version defaults, lockfile, icon, and plist. It embeds the pinned Sparkle binary with `ditto` to preserve framework symlinks and permissions. It signs inner helpers before the framework and the app, never signing with `--deep`, then verifies all signatures. With the current defaults, the result is `dist/Little Mac Stats.app` and `dist/Little-Mac-Stats-0.3.0.zip`. Existing files with those names in the output directory are replaced. This is a repeatable build procedure; byte-for-byte reproducibility is not promised because toolchains and signing timestamps can differ.
+Packaging uses the checked-in version defaults, lockfile, icon, and plist. It embeds the pinned Sparkle binary with `ditto` to preserve framework symlinks and permissions. It signs inner helpers before the framework and the app, never signing with `--deep`, then verifies all signatures. With the current defaults, the result is `dist/Little Mac Stats.app` and `dist/Little-Mac-Stats-0.4.0.zip`. Existing files with those names in the output directory are replaced. This is a repeatable build procedure; byte-for-byte reproducibility is not promised because toolchains and signing timestamps can differ.
 
 Ad hoc signing is the default and does not enable hardened runtime. This allows the embedded framework to load locally without Library Validation rejecting its signature. To use an existing development certificate instead:
 
@@ -37,8 +37,8 @@ The packaging script accepts these environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VERSION` | `CFBundleShortVersionString` from `Resources/Info.plist`, currently `0.3.0` | Numeric marketing version, three components |
-| `BUILD_NUMBER` | `CFBundleVersion` from `Resources/Info.plist`, currently `7` | Positive integer, increased for each distributed build |
+| `VERSION` | `CFBundleShortVersionString` from `Resources/Info.plist`, currently `0.4.0` | Numeric marketing version, three components |
+| `BUILD_NUMBER` | `CFBundleVersion` from `Resources/Info.plist`, currently `8` | Positive integer, increased for each distributed build |
 | `UNIVERSAL` | `0` | `1` builds arm64 and x86_64; otherwise builds for the current machine |
 | `OUTPUT_DIRECTORY` | `dist` in the repository | Output directory |
 | `SIGNING_IDENTITY` | `-` | Ad hoc, Apple Development, or Developer ID identity |
@@ -133,7 +133,7 @@ Before announcing a release, install a genuine older Developer ID signed, notari
 The version and build change is an ordinary commit on `main`, such as `chore: set version 0.3.1, build 8`, landed with `scripts/push_main.sh` like any other; tag that commit `vX.Y.Z` after it lands. A cloud session cannot create tags, so push the tag from a Mac. Write the GitHub release text from the `Customer-note:` trailers since the previous tag, skipping `none` entries:
 
 ```sh
-git log --format='%(trailers:key=Customer-note,valueonly,unfold)' v0.3.0..main | sed '/^$/d;/^none/d'
+git log --format='%(trailers:key=Customer-note,valueonly,unfold)' v0.4.0..main | sed '/^$/d;/^none/d'
 ```
 
 Attach the notarized archive and generated appcast to a clearly marked GitHub prerelease while verifying the update path. This provides a real HTTPS download endpoint without announcing the build as stable. After successful installation/update checks, promote the release and mark it latest so the production feed URL resolves. Test available macOS versions and architectures and record the exact tested combinations in `docs/VALIDATION.md`; do not imply runtime coverage from cross-compilation alone. The first release was run on Apple silicon; Intel and earlier macOS runtime checks remain follow-up work.
