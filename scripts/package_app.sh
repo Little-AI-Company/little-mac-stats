@@ -61,6 +61,7 @@ install -m 755 "$binary_directory/LittleMacStats" "$application/Contents/MacOS/L
 ditto "$framework_source" "$application/Contents/Frameworks/Sparkle.framework"
 cp Resources/Info.plist "$application/Contents/Info.plist"
 cp Resources/AppIcon.icns "$application/Contents/Resources/AppIcon.icns"
+cp Resources/LoadingIllustration.png "$application/Contents/Resources/LoadingIllustration.png"
 cp LICENSE "$application/Contents/Resources/LICENSE.txt"
 cp .build/artifacts/sparkle/Sparkle/LICENSE "$application/Contents/Resources/Sparkle-LICENSE.txt"
 plutil -replace CFBundleShortVersionString -string "$version" "$application/Contents/Info.plist"

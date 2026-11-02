@@ -72,6 +72,8 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
     private let historyView = CPUHistoryView()
     private let searchField = NSSearchField()
     private let outline = ProcessOutlineView()
+    private let processScrollView = NSScrollView()
+    private let loadingIllustration = NSImageView()
     private let stopButton = NSButton(title: "Stop…", target: nil, action: nil)
     private var allGroups: [GroupRow] = []
     private var groups: [GroupRow] = []
@@ -138,12 +140,15 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         outline.setAccessibilityLabel("CPU usage by app and process")
         outline.onClose = { [weak self] in self?.onClose?() }
         outline.onInteraction = { [weak self] in self?.lastInteraction = Date() }
-        let scrollView = NSScrollView()
+        let scrollView = processScrollView
         scrollView.documentView = outline
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
         scrollView.setAccessibilityLabel("Running apps and processes")
+        loadingIllustration.image = NSImage(named: "LoadingIllustration")
+        loadingIllustration.imageScaling = .scaleProportionallyUpOrDown
+        loadingIllustration.setAccessibilityElement(false)
 
         stopButton.target = self
         stopButton.action = #selector(stopSelected(_:))
@@ -160,7 +165,7 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         let footer = applicationFooter()
         let separator = NSBox()
         separator.boxType = .separator
-        for component in [title, totalLabel, historyView, searchField, scrollView, separator, sampleLabel,
+        for component in [title, totalLabel, historyView, searchField, scrollView, loadingIllustration, separator, sampleLabel,
                           stopButton, displaySeparator, displayChoices, footerSeparator, footer] {
             component.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(component)
@@ -207,9 +212,14 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
             footer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             footer.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
             scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 270),
+            loadingIllustration.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
+            loadingIllustration.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
+            loadingIllustration.widthAnchor.constraint(equalToConstant: 160),
+            loadingIllustration.heightAnchor.constraint(equalToConstant: 160),
             view.widthAnchor.constraint(greaterThanOrEqualToConstant: 468)
         ])
         updateSystemDisplay()
+        showLoading(!processesReady)
         synchronizeDisplayChoices()
         updateActions()
         refreshUpdates()
@@ -310,6 +320,7 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         allGroups = []
         groups = []
         outline.reloadData()
+        showLoading(true)
         updateSystemDisplay()
         updateActions()
     }
@@ -319,6 +330,7 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         self.processesReady = processesReady
         updateSystemDisplay()
         apply(snapshot.groups)
+        showLoading(!processesReady)
         if processesReady {
             let count = searchField.stringValue.isEmpty ? snapshot.groups.count : groups.count
             let text = (count == 1 ? "1 app or process" : "\(count) apps and processes")
@@ -340,7 +352,13 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         allGroups = []
         groups = []
         outline.reloadData()
+        showLoading(false)
         updateActions()
+    }
+
+    private func showLoading(_ loading: Bool) {
+        loadingIllustration.isHidden = !loading
+        processScrollView.isHidden = loading
     }
 
     private func apply(_ incoming: [ProcessGroup]) {
