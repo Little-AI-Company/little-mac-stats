@@ -78,6 +78,7 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
     private var allGroups: [GroupRow] = []
     private var groups: [GroupRow] = []
     private var processesReady = false
+    private var focusesTableAfterLoading = false
     private var terminating = false
     private var lastInteraction = Date.distantPast
     private var history: [CPUHistorySample] = []
@@ -288,7 +289,14 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         return footer
     }
 
-    func focusTable() { view.window?.makeFirstResponder(outline) }
+    func focusTable() {
+        guard processScrollView.isHidden else {
+            view.window?.makeFirstResponder(outline)
+            return
+        }
+        focusesTableAfterLoading = true
+        view.window?.makeFirstResponder(nil)
+    }
     func focusSearch() {
         loadViewIfNeeded()
         view.window?.makeFirstResponder(searchField)
@@ -359,6 +367,10 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
     private func showLoading(_ loading: Bool) {
         loadingIllustration.isHidden = !loading
         processScrollView.isHidden = loading
+        if !loading && focusesTableAfterLoading {
+            focusesTableAfterLoading = false
+            if let window = view.window, window.firstResponder === window { focusTable() }
+        }
     }
 
     private func apply(_ incoming: [ProcessGroup]) {
@@ -609,7 +621,8 @@ final class ProcessPanelController: NSViewController, NSOutlineViewDataSource, N
         let readingAvailable: Bool
         let tooltip: String
         if let group = item as? GroupRow {
-            name = group.group.name
+            let identity = group.group.id.split(separator: ":")
+            name = identity.count == 3 && identity[0] == "process" ? "\(group.group.name) (\(identity[1]))" : group.group.name
             percent = group.group.cpuPercent
             readingAvailable = processesReady && group.group.processes.contains(where: \.cpuReadingAvailable)
             let missing = group.group.processes.filter { !$0.cpuReadingAvailable }.count
