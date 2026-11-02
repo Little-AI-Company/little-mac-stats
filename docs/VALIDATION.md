@@ -143,3 +143,18 @@ On October 20, 2026, 0.3.0 build 7 was released as the first build named Little 
 - On a Mac with the `mac-stats` 0.2.0 cask installed, `brew install --cask parkerrex/tap/little-mac-stats` followed `cask_renames.json`, removed `Mac Stats.app`, and installed `/Applications/Little Mac Stats.app` 0.3.0. The installed app passed `codesign`, stapler, and `spctl` checks, launched from `/Applications`, and showed the per-core blocks in the menu bar.
 
 Not exercised: a Sparkle update from one Little Mac Stats build to another (no earlier build exists under this identity), Intel execution, and macOS versions before 27. Mac Stats 0.2.0 installs that check for updates are expected to find 0.3.0 at the redirected feed and reject it, because 0.3.0 is signed with the new key; this intended clean break was not exercised.
+
+## Little Mac Stats 0.4.0 release
+
+On November 2, 2026, 0.4.0 build 8 was released with Chip the hamster as the app icon, the loading illustration, and the panel sorting fix. The app was built from commit `6faf87c` with `VERSION=0.4.0 BUILD_NUMBER=8`; the tag `v0.4.0` is on `3293296`, which changes only `Resources/Info.plist`, `README.md`, and this repository's release docs to the same version. Checks ran on Apple silicon with macOS 27.0.1, Xcode 27.2 (27B52), and Homebrew 7.0.12-6-gf6051a7.
+
+- `swift test`: 11 tests passed. `swift build -c release`: complete. `scripts/push_main.sh` repeated both on `3293296`.
+- `UNIVERSAL=1` packaging with the Developer ID Application identity embedded the production feed URL and the existing Ed25519 public key `2APrfWztckb/VheElDHKCRadqb8+293SyIDq8lMXCS8=`. `lipo -archs` reported `x86_64 arm64`.
+- `scripts/create_xcode_archive.sh`, then `xcodebuild -exportArchive` with `destination=upload` through the signed-in Xcode account, uploaded the app. `xcodebuild -exportNotarizedApp` succeeded once Apple accepted it.
+- On the notarized export: `codesign --verify --deep --strict` passed, `xcrun stapler validate` passed, and `spctl --assess --type execute` reported `accepted`, `source=Notarized Developer ID`. The minimum system version is 14.0.
+- `generate_appcast --account com.thelittleworker.little-mac-stats` ran over a folder holding the 0.3.0 and 0.4.0 archives and the 0.3.0 appcast. It rewrote the 0.3.0 enclosure URL to the v0.4.0 download prefix, which would not resolve; that URL was set back to the v0.3.0 download before publishing. Use one prefix per release or check every enclosure URL after generating.
+- The public `Little-Mac-Stats-0.4.0.zip` is 3434460 bytes with SHA-256 `017fe1a81cfc8342be95bf14b92109c4a994c46f81d751f71e84de4eb010741a`, the same as the local archive; the extracted app passed `codesign`, stapler, and `spctl` checks.
+- After the release was marked latest, the public `releases/latest/download/appcast.xml` was byte-identical to the generated feed: 0.4.0, build 8, the v0.4.0 download URL, and length 3434460. Its EdDSA signature verified against the embedded public key with `openssl pkeyutl -verify`.
+- With the public tap at commit `bb0c7bf`: `brew style --cask parkerrex/tap/little-mac-stats` found no offenses, `brew audit --cask --online` passed, and `brew livecheck` reported `0.4.0 ==> 0.4.0`.
+
+Not exercised: the Sparkle update from the installed 0.3.0 to 0.4.0 (screen control of the app was not available to the release session), a Homebrew upgrade from 0.3.0 (skipped to keep the 0.3.0 install for that update test), the new icon and loading illustration in the running packaged app, Intel execution, and macOS versions before 27.
