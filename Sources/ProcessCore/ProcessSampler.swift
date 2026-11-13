@@ -62,11 +62,13 @@ public actor ProcessSampler {
             counters.reserveCapacity(records.count)
             for record in records {
                 var percent = 0.0
+                var measured = false
                 if let counter = record.cpuTicks {
-                    if let previous = previousProcesses[record.identity] {
+                    if let previous = previousProcesses[record.identity], counter >= previous, elapsed > 0 {
                         percent = CPUCalculation.processPercent(previous: previous, current: counter,
                             elapsedNanoseconds: elapsed, processorCount: logicalProcessorCount,
                             nanosecondsPerTick: nanosecondsPerTick)
+                        measured = true
                     }
                     counters[record.identity] = counter
                 }
@@ -75,7 +77,7 @@ public actor ProcessSampler {
                 samples[record.identity] = ProcessSample(identity: record.identity, parentPID: record.parentPID,
                     name: record.name, executablePath: record.executablePath, cpuPercent: percent,
                     residentMemoryBytes: record.residentMemoryBytes, terminationRestriction: restriction,
-                    cpuReadingAvailable: record.cpuTicks != nil)
+                    cpuReadingAvailable: measured)
             }
             groups = ProcessClassification.groups(records: records, samples: samples,
                                                    applicationTools: applicationTools, executables: executables)
